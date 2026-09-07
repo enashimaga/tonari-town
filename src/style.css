@@ -1,0 +1,473 @@
+:root {
+  font-family: 'Hiragino Kaku Gothic ProN', 'Yu Gothic', Meiryo, sans-serif;
+  color: #30463e;
+  background: #f6f4ee;
+  font-synthesis: none;
+  font-weight: 400;
+  line-height: 1.7;
+  font-size: 14px;
+}
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+}
+button,
+select,
+textarea {
+  font: inherit;
+}
+button,
+a,
+select {
+  touch-action: manipulation;
+}
+button {
+  cursor: pointer;
+  border: 1px solid #d1d8cc;
+  border-radius: 8px;
+  padding: 9px 14px;
+  background: #fffdf7;
+  color: #30463e;
+}
+button:hover:enabled {
+  background: #e7eee2;
+}
+button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+button:focus-visible,
+a:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+summary:focus-visible {
+  outline: 3px solid #699a88;
+  outline-offset: 3px;
+}
+.app-shell {
+  max-width: 1480px;
+  margin: auto;
+  padding: 0 44px;
+}
+.site-header {
+  height: 94px;
+  border-bottom: 1px solid #dedfd4;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: inherit;
+  text-decoration: none;
+  font-size: 23px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+}
+.brand-mark {
+  display: grid;
+  place-items: center;
+  background: #e3eadf;
+  border-radius: 50%;
+  height: 46px;
+  width: 46px;
+  font-size: 31px;
+  font-weight: 400;
+}
+.brand small {
+  display: block;
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: 0.22em;
+  margin-top: -4px;
+}
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.poc-badge {
+  font-size: 11px;
+  letter-spacing: 0.07em;
+  border: 1px solid #d1d8cc;
+  border-radius: 30px;
+  padding: 5px 12px;
+  color: #67796b;
+}
+.intro {
+  padding: 42px 0 28px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+}
+.eyebrow {
+  font-size: 11px;
+  letter-spacing: 0.15em;
+  color: #658574;
+  margin: 0 0 12px;
+}
+h1 {
+  font-family: 'Yu Mincho', 'Hiragino Mincho ProN', serif;
+  font-weight: 500;
+  font-size: 34px;
+  letter-spacing: 0.08em;
+  margin: 0 0 12px;
+  line-height: 1.5;
+}
+.intro p:not(.eyebrow) {
+  font-size: 13px;
+  line-height: 1.9;
+  color: #748075;
+  margin: 0;
+}
+.time-control {
+  font-size: 11px;
+  color: #6b7d70;
+  display: grid;
+  gap: 6px;
+  min-width: 165px;
+}
+select {
+  width: 100%;
+  border: 1px solid #d8ded1;
+  border-radius: 8px;
+  padding: 10px;
+  background: #fffdf8;
+  color: #30463e;
+}
+.notice {
+  padding: 12px 16px;
+  border-radius: 8px;
+  background: #eaf0e5;
+  color: #62795d;
+  font-size: 12px;
+  margin: 0 0 20px;
+}
+.layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 340px;
+  gap: 24px;
+  align-items: start;
+}
+.town {
+  height: 650px;
+  position: sticky;
+  top: 20px;
+  border-radius: 18px;
+  overflow: hidden;
+  background: #e8eee5;
+  border: 1px solid #d8e0d2;
+}
+.town canvas {
+  touch-action: none;
+}
+.town-caption {
+  position: absolute;
+  top: 18px;
+  left: 18px;
+  background: #fffdf3e8;
+  border: 1px solid #ffffffaa;
+  border-radius: 30px;
+  padding: 8px 16px;
+  font-size: 12px;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  pointer-events: none;
+}
+.town-caption > span:last-child {
+  font-size: 10px;
+  color: #7d8d7a;
+  border-left: 1px solid #d2dacb;
+  padding-left: 12px;
+}
+.dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #7f9d68;
+}
+.walk-controls {
+  position: absolute;
+  bottom: 18px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  white-space: nowrap;
+  background: #fffdf5ee;
+  border-radius: 12px;
+  padding: 9px 12px;
+  box-shadow: 0 4px 20px #30463e0d;
+  text-align: center;
+}
+.walk-controls span {
+  font-size: 11px;
+}
+.walk-controls small {
+  font-size: 9px;
+  color: #748075;
+}
+.walk-controls button {
+  font-size: 21px;
+  padding: 2px 14px;
+}
+.bubble {
+  width: 190px;
+  background: #fffef7f5;
+  color: #405247;
+  border-radius: 12px;
+  padding: 12px 15px;
+  box-shadow: 0 4px 14px #3149331a;
+  border: 1px solid #fff;
+  overflow-wrap: anywhere;
+  position: relative;
+}
+.bubble:after {
+  content: '';
+  position: absolute;
+  bottom: -8px;
+  left: 50%;
+  border-width: 8px 7px 0;
+  border-style: solid;
+  border-color: #fffef7f5 transparent transparent;
+}
+.bubble small {
+  font-size: 10px;
+  color: #758b75;
+}
+.bubble p {
+  font-size: 12px;
+  margin: 4px 0 0;
+  line-height: 1.8;
+}
+.editor {
+  padding: 26px;
+  background: #fffdf8;
+  border: 1px solid #e1e3d8;
+  border-radius: 16px;
+}
+.editor h2 {
+  font-family: 'Yu Mincho', 'Hiragino Mincho ProN', serif;
+  font-weight: 500;
+  font-size: 21px;
+  margin: 0 0 12px;
+}
+.muted {
+  font-size: 12px;
+  color: #758075;
+  line-height: 1.9;
+}
+.editor label:not(.checkbox) {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  margin: 24px 0 10px;
+}
+textarea {
+  width: 100%;
+  min-height: 224px;
+  resize: vertical;
+  padding: 12px;
+  background: #f6f7f0;
+  border: 1px solid #dce1d5;
+  border-radius: 8px;
+  color: #536651;
+  font-family: ui-monospace, monospace;
+  font-size: 11px;
+  line-height: 1.6;
+}
+.secondary,
+.primary {
+  width: 100%;
+  margin-top: 12px;
+}
+.primary {
+  background: #456d5d;
+  color: #fff;
+  border-color: #456d5d;
+  padding: 12px;
+}
+.primary:hover:enabled {
+  background: #355646;
+}
+.secondary {
+  font-size: 12px;
+}
+.checkbox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  margin-top: 18px;
+}
+.checkbox input {
+  accent-color: #456d5d;
+}
+.preview {
+  margin-top: 16px;
+  background: #f3f5eb;
+  padding: 14px;
+  border-radius: 8px;
+  max-height: 240px;
+  overflow: auto;
+  overflow-wrap: anywhere;
+}
+.preview strong {
+  font-size: 12px;
+}
+.preview p {
+  font-size: 12px;
+  border-top: 1px solid #dce2d3;
+  padding-top: 9px;
+}
+.preview small {
+  display: block;
+  font-size: 10px;
+  color: #7f8f76;
+}
+.feedback {
+  font-size: 12px;
+  border-radius: 6px;
+  background: #edf3e7;
+  padding: 10px;
+  overflow-wrap: anywhere;
+}
+.error {
+  color: #944c3c;
+  background: #f9ece5;
+}
+.text-button {
+  border: 0;
+  background: transparent;
+  font-size: 11px;
+  padding: 8px 0;
+  color: #7c8177;
+  text-decoration: underline;
+}
+.editor details {
+  margin-top: 24px;
+  border-top: 1px solid #e4e6dc;
+  padding-top: 16px;
+  font-size: 11px;
+  color: #72806e;
+}
+.editor summary {
+  cursor: pointer;
+}
+.editor details p {
+  line-height: 1.9;
+}
+.editor pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: 10px;
+}
+.canvas-fallback {
+  display: grid;
+  place-items: center;
+  padding: 30px;
+  color: #6b7d70;
+}
+footer {
+  display: flex;
+  justify-content: space-between;
+  padding: 32px 0;
+  color: #8c9688;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+}
+.mobile-break {
+  display: none;
+}
+@media (max-width: 1000px) {
+  .app-shell {
+    padding: 0 24px;
+  }
+  .layout {
+    grid-template-columns: minmax(0, 1fr) 310px;
+    gap: 16px;
+  }
+  .editor {
+    padding: 20px;
+  }
+  .town {
+    height: 610px;
+  }
+  .bubble {
+    width: 154px;
+    padding: 10px 12px;
+  }
+}
+@media (max-width: 720px) {
+  .app-shell {
+    padding: 0 16px;
+  }
+  .site-header {
+    height: 78px;
+  }
+  .brand {
+    font-size: 20px;
+  }
+  .brand-mark {
+    width: 38px;
+    height: 38px;
+  }
+  .poc-badge {
+    display: none;
+  }
+  .intro {
+    padding: 28px 0 20px;
+    display: block;
+  }
+  h1 {
+    font-size: 28px;
+  }
+  .mobile-break {
+    display: block;
+  }
+  .intro p:not(.eyebrow) {
+    font-size: 12px;
+  }
+  .time-control {
+    margin-top: 18px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .time-control select {
+    width: auto;
+    font-size: 12px;
+  }
+  .layout {
+    grid-template-columns: 1fr;
+  }
+  .town {
+    position: relative;
+    top: 0;
+    height: 480px;
+  }
+  .editor {
+    padding: 24px;
+  }
+  .bubble {
+    width: 135px;
+  }
+  .bubble p {
+    font-size: 11px;
+  }
+  .notice {
+    font-size: 11px;
+  }
+  .header-actions {
+    gap: 8px;
+  }
+  footer {
+    font-size: 10px;
+  }
+}

@@ -29,3 +29,7 @@ supabase/.branches/
 *.log
 .DS_Store
 .idea/
+
+# Browser test artifacts
+playwright-report/
+test-results/
