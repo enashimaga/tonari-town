@@ -45,7 +45,7 @@ URLの役割は次のように分かれます。
 | 設定先                           | URL例                                          | 役割                           |
 | -------------------------------- | ---------------------------------------------- | ------------------------------ |
 | X側のCallback URL                | `https://PROJECT.supabase.co/auth/v1/callback` | XからSupabaseへ戻る            |
-| SupabaseのRedirect URL（開発）   | `http://127.0.0.1:5173/auth/callback`          | Supabaseからローカルの街へ戻る |
+| SupabaseのRedirect URL（開発）   | `http://127.0.0.1:5201/auth/callback`          | Supabaseからローカルの街へ戻る |
 | SupabaseのRedirect URL（公開後） | `https://YOUR-APP.workers.dev/auth/callback`   | Supabaseから公開された街へ戻る |
 
 ポートを変えた場合はRedirect URLも合わせます。アプリはOAuth 2.0の `provider: 'x'` とPKCEを使い、ブラウザSDKが戻り先のコード交換とセッション管理を担当します。
