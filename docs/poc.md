@@ -48,6 +48,8 @@ URLの役割は次のように分かれます。
 | SupabaseのRedirect URL（開発）   | `http://127.0.0.1:5201/auth/callback`          | Supabaseからローカルの街へ戻る |
 | SupabaseのRedirect URL（公開後） | `https://YOUR-APP.workers.dev/auth/callback`   | Supabaseから公開された街へ戻る |
 
+別PCのブラウザで開く場合は、VS Code Remote SSHの「ポート」タブで5201を転送し、`http://127.0.0.1:5201/` からログインしてください。LANのHTTPアドレスではブラウザの認証用暗号機能に制限があるため、ログイン検証にはポート転送を推奨します。
+
 ポートを変えた場合はRedirect URLも合わせます。アプリはOAuth 2.0の `provider: 'x'` とPKCEを使い、ブラウザSDKが戻り先のコード交換とセッション管理を担当します。
 
 現在のSupabase公式手順にはX側のメール取得設定も含まれます。実際の同意画面で要求内容を確認し、投稿・DMなど、このアプリに不要な権限は追加しません。
