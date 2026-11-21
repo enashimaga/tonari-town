@@ -1,12 +1,25 @@
 import { Canvas, useFrame } from '@react-three/fiber'
 import { Html } from '@react-three/drei'
-import { Component, useEffect, useRef, useState, type ReactNode } from 'react'
+import {
+  Component,
+  useEffect,
+  useRef,
+  useState,
+  type ReactNode,
+  type RefObject,
+} from 'react'
 import { Group, Vector3, type Camera, type Object3D } from 'three'
 import { pickLine } from './partner'
-import { plots, walkToward, type Home } from './world'
+import { apartment, plots, moveToward, type Home, type Position } from './world'
 
-type Props = { homes: Home[]; hour: number }
-const colors = ['#d9b299', '#a4b5aa', '#dbc99f', '#9eafbd']
+type Props = {
+  homes: Home[]
+  hour: number
+  selectedPlot: number
+  onSelectPlot: (plot: number) => void
+  hiddenOwners: ReadonlySet<string>
+}
+const colors = ['#dfbba1', '#b1c2ad', '#e4d2a6', '#adc2ca']
 const projectedLabel = new Vector3()
 
 function bubblePosition(
@@ -24,37 +37,108 @@ function bubblePosition(
   ]
 }
 
+function Block({
+  position,
+  size,
+  color,
+  transparent = false,
+}: {
+  position: [number, number, number]
+  size: [number, number, number]
+  color: string
+  transparent?: boolean
+}) {
+  return (
+    <mesh position={position} castShadow={!transparent} receiveShadow>
+      <boxGeometry args={size} />
+      <meshStandardMaterial
+        color={color}
+        transparent={transparent}
+        opacity={transparent ? 0.4 : 1}
+        depthWrite={!transparent}
+      />
+    </mesh>
+  )
+}
+
+function Tree({
+  x,
+  z,
+  variant = 0,
+}: {
+  x: number
+  z: number
+  variant?: number
+}) {
+  return (
+    <group position={[x, 0, z]}>
+      <mesh position={[0, 0.8, 0]} castShadow>
+        <cylinderGeometry args={[0.16, 0.24, 1.6, 6]} />
+        <meshStandardMaterial color="#92745b" />
+      </mesh>
+      <mesh position={[0, 2.3 + variant * 0.15, 0]} castShadow>
+        <icosahedronGeometry args={[1.5 + variant * 0.1, 0]} />
+        <meshStandardMaterial
+          color={['#789a76', '#98b284', '#658b73'][variant % 3]}
+        />
+      </mesh>
+    </group>
+  )
+}
+
 function Street({
   homes,
   hour,
+  selectedPlot,
+  onSelectPlot,
+  hiddenOwners,
   target,
   setPosition,
 }: Props & {
-  target: React.RefObject<number>
-  setPosition: (position: number) => void
+  target: RefObject<Position>
+  setPosition: (position: Position) => void
 }) {
   const avatar = useRef<Group>(null)
-  const position = useRef(18)
+  const position = useRef<Position>({ x: 0, z: 18 })
   const keys = useRef(new Set<string>())
-  const [near, setNear] = useState(18)
+  const [near, setNear] = useState<Position>({ x: 0, z: 18 })
   const [tick, setTick] = useState(0)
   const cameraTarget = useRef(new Vector3())
   const elapsed = useRef(0)
+  const occupied = homes.map((home) => home.plot)
 
   useEffect(() => {
     const down = (event: KeyboardEvent) => {
       if (
-        (event.target as HTMLElement)?.closest('input,textarea,select,button')
+        (event.target as HTMLElement)?.closest(
+          'input,textarea,select,button,[contenteditable="true"]',
+        )
       )
         return
-      if (['ArrowUp', 'ArrowDown', 'w', 's', 'W', 'S'].includes(event.key)) {
+      if (
+        [
+          'arrowup',
+          'arrowdown',
+          'arrowleft',
+          'arrowright',
+          'w',
+          'a',
+          's',
+          'd',
+        ].includes(event.key.toLowerCase())
+      ) {
         event.preventDefault()
         keys.current.add(event.key.toLowerCase())
       }
     }
-    const up = (event: KeyboardEvent) =>
+    const up = (event: KeyboardEvent) => {
       keys.current.delete(event.key.toLowerCase())
-    const clear = () => keys.current.clear()
+      if (!keys.current.size) target.current = { ...position.current }
+    }
+    const clear = () => {
+      keys.current.clear()
+      target.current = { ...position.current }
+    }
     window.addEventListener('keydown', down)
     window.addEventListener('keyup', up)
     window.addEventListener('blur', clear)
@@ -65,30 +149,40 @@ function Street({
       window.removeEventListener('blur', clear)
       window.clearInterval(timer)
     }
-  }, [])
+  }, [target])
 
   useFrame(({ camera }, delta) => {
-    const direction =
+    const dx =
+      Number(keys.current.has('arrowright') || keys.current.has('d')) -
+      Number(keys.current.has('arrowleft') || keys.current.has('a'))
+    const dz =
       Number(keys.current.has('arrowdown') || keys.current.has('s')) -
       Number(keys.current.has('arrowup') || keys.current.has('w'))
-    if (direction)
-      target.current = Math.max(
-        -19,
-        Math.min(19, position.current + direction * 2),
-      )
-    const next = walkToward(position.current, target.current, delta)
+    if (dx || dz)
+      target.current = {
+        x: position.current.x + dx * 2,
+        z: position.current.z + dz * 2,
+      }
+    const next = moveToward(position.current, target.current, delta, occupied)
+    const moved =
+      Math.hypot(next.x - position.current.x, next.z - position.current.z) >
+      0.001
     if (avatar.current) {
-      avatar.current.position.z = next
-      avatar.current.position.y =
-        Math.abs(next - position.current) > 0.001
-          ? Math.sin(Date.now() / 100) * 0.04
-          : 0
-      avatar.current.rotation.y = next < position.current ? Math.PI : 0
+      avatar.current.position.set(
+        next.x,
+        moved ? Math.sin(Date.now() / 100) * 0.04 : 0,
+        next.z,
+      )
+      if (moved)
+        avatar.current.rotation.y = Math.atan2(
+          next.x - position.current.x,
+          next.z - position.current.z,
+        )
     }
     position.current = next
-    cameraTarget.current.set(0, 9, next + 11)
+    cameraTarget.current.set(next.x, 13, next.z + 15)
     camera.position.lerp(cameraTarget.current, 1 - Math.exp(-7 * delta))
-    camera.lookAt(0, 0, next - 3)
+    camera.lookAt(next.x, 0, next.z - 3)
     elapsed.current += delta
     if (elapsed.current > 0.15) {
       elapsed.current = 0
@@ -97,113 +191,299 @@ function Street({
     }
   })
 
+  const speech = (home: Home | undefined, x: number, y: number, z: number) => {
+    if (
+      !home ||
+      hiddenOwners.has(home.owner_id) ||
+      Math.hypot(x - near.x, z - near.z) > 6
+    )
+      return null
+    return (
+      <Html
+        center
+        position={[x, y, z]}
+        calculatePosition={bubblePosition}
+        zIndexRange={[10, 0]}
+        style={{ pointerEvents: 'none' }}
+      >
+        <div className="bubble">
+          <small>{home.partner.partnerName}</small>
+          <p>{pickLine(home.partner, hour, tick)}</p>
+        </div>
+      </Html>
+    )
+  }
+
   return (
     <>
-      <color attach="background" args={['#e8eee5']} />
-      <fog attach="fog" args={['#e8eee5', 24, 52]} />
-      <ambientLight intensity={1.5} />
+      <color attach="background" args={['#e6eee8']} />
+      <fog attach="fog" args={['#e6eee8', 35, 75]} />
+      <ambientLight intensity={1.6} />
       <directionalLight
-        position={[8, 15, 4]}
+        position={[8, 22, 12]}
         intensity={2}
         castShadow
-        shadow-mapSize={[1024, 1024]}
-        shadow-camera-left={-14}
-        shadow-camera-right={14}
-        shadow-camera-top={24}
-        shadow-camera-bottom={-24}
+        shadow-mapSize={[2048, 2048]}
+        shadow-camera-left={-30}
+        shadow-camera-right={30}
+        shadow-camera-top={30}
+        shadow-camera-bottom={-30}
+        shadow-normalBias={0.04}
       />
-      <mesh
-        rotation={[-Math.PI / 2, 0, 0]}
-        receiveShadow
-        onClick={(event) => {
-          target.current = Math.max(-19, Math.min(19, event.point.z))
-        }}
-      >
-        <planeGeometry args={[80, 90]} />
-        <meshStandardMaterial color="#b8c7a0" />
-      </mesh>
-      <mesh
-        rotation={[-Math.PI / 2, 0, 0]}
-        position={[0, 0.015, 0]}
-        receiveShadow
+      <group
         onClick={(event) => {
           event.stopPropagation()
-          target.current = Math.max(-19, Math.min(19, event.point.z))
+          target.current = { x: event.point.x, z: event.point.z }
         }}
       >
-        <planeGeometry args={[3.8, 42]} />
-        <meshStandardMaterial color="#e7dcc6" />
-      </mesh>
-      {plots.map((plot, index) => (
-        <mesh
-          key={`plot-${index}`}
-          position={[plot.x, 0.02, plot.z]}
-          rotation={[-Math.PI / 2, 0, 0]}
-        >
-          <planeGeometry args={[3.4, 3.8]} />
-          <meshStandardMaterial color="#c7d3b3" />
-        </mesh>
+        <Block position={[2, -0.15, 0]} size={[62, 0.3, 62]} color="#bdcba5" />
+        <Block position={[0, 0.015, 0]} size={[4, 0.03, 43]} color="#e8ddc6" />
+        <Block
+          position={[3, 0.025, 0]}
+          size={[49, 0.04, 3.8]}
+          color="#e8ddc6"
+        />
+        <Block
+          position={[-13, 0.025, 3]}
+          size={[3.4, 0.04, 18]}
+          color="#e8ddc6"
+        />
+        <Block position={[8.2, 0.02, 0]} size={[2, 0.04, 48]} color="#dcd7b5" />
+        <Block
+          position={[15.6, 0.02, 0]}
+          size={[2, 0.04, 48]}
+          color="#dcd7b5"
+        />
+        <Block
+          position={[21, 0.025, -10]}
+          size={[2.8, 0.04, 22]}
+          color="#d6c8a9"
+        />
+        <Block
+          position={[-10, 0.03, 10]}
+          size={[10, 0.04, 7]}
+          color="#dfd7bd"
+        />
+        <Block position={[12, 0.025, 0]} size={[4, 0.04, 62]} color="#85b9c4" />
+        <Block
+          position={[12, 0.07, 0]}
+          size={[5.6, 0.1, 3.8]}
+          color="#c5a783"
+        />
+        {Array.from({ length: 8 }, (_, i) => (
+          <Block
+            key={i}
+            position={[9.6 + i * 0.7, 0.13, 0]}
+            size={[0.05, 0.015, 3.75]}
+            color="#9b856e"
+          />
+        ))}
+      </group>
+      {[-1, 1].map((side) => (
+        <group key={side}>
+          <Block
+            position={[12, 0.75, side * 1.9]}
+            size={[5.6, 0.14, 0.14]}
+            color="#9a7b5e"
+          />
+          {[9.5, 12, 14.5].map((x) => (
+            <Block
+              key={x}
+              position={[x, 0.4, side * 1.9]}
+              size={[0.15, 0.8, 0.15]}
+              color="#9a7b5e"
+            />
+          ))}
+        </group>
       ))}
-      {homes.map((home) => {
-        const p = plots[home.plot]
-        if (!p) return null
-        const nearby = Math.abs(p.z - near) < 5
-        return (
-          <group key={home.owner_id} position={[p.x, 0, p.z]}>
-            <mesh position={[0, 1, 0]} castShadow receiveShadow>
-              <boxGeometry args={[2.7, 2, 2.7]} />
-              <meshStandardMaterial color={colors[home.plot % colors.length]} />
-            </mesh>
-            <mesh
-              position={[0, 2.5, 0]}
-              rotation={[0, Math.PI / 4, 0]}
-              castShadow
+      {Array.from({ length: 12 }, (_, i) => (
+        <Block
+          key={`ripple-${i}`}
+          position={[11 + (i % 3) * 0.8, 0.055, -25 + i * 4.4]}
+          size={[0.7, 0.012, 0.07]}
+          color="#b8d8d9"
+        />
+      ))}
+      {plots
+        .filter((plot) => plot.kind === 'house')
+        .map((plot, index) => {
+          const home = homes.find((entry) => entry.plot === index)
+          const selected = selectedPlot === index
+          return (
+            <group
+              key={index}
+              position={[plot.x, 0, plot.z]}
+              onClick={(event) => {
+                event.stopPropagation()
+                onSelectPlot(index)
+              }}
             >
-              <coneGeometry args={[2.25, 1.3, 4]} />
-              <meshStandardMaterial color="#5f7470" />
-            </mesh>
-            <mesh position={[0, 0.65, 1.36]}>
-              <boxGeometry args={[0.65, 1.3, 0.05]} />
-              <meshStandardMaterial color="#647265" />
-            </mesh>
-            <mesh position={[0.8, 1.2, 1.38]}>
-              <boxGeometry args={[0.55, 0.55, 0.06]} />
-              <meshStandardMaterial
-                color="#fff1ba"
-                emissive="#edc46c"
-                emissiveIntensity={0.25}
+              <Block
+                position={[0, 0.04, 0]}
+                size={[3.6, 0.08, 4]}
+                color={selected ? '#dfbf6b' : home ? '#cdd5b7' : '#aabb97'}
               />
-            </mesh>
-            {nearby && (
-              <Html
-                center
-                position={[0, 3.9, 0]}
-                calculatePosition={bubblePosition}
-                zIndexRange={[10, 0]}
-                style={{ pointerEvents: 'none' }}
-              >
-                <div className="bubble">
-                  <small>{home.partner.partnerName}</small>
-                  <p>{pickLine(home.partner, hour, tick)}</p>
-                </div>
-              </Html>
-            )}
+              {home || selected ? (
+                <>
+                  <Block
+                    position={[0, 1.05, 0]}
+                    size={[2.7, 2, 2.7]}
+                    color={colors[index % colors.length]}
+                    transparent={!home}
+                  />
+                  <mesh
+                    position={[0, 2.5, 0]}
+                    rotation={[0, Math.PI / 4, 0]}
+                    castShadow={!!home}
+                  >
+                    <coneGeometry args={[2.25, 1.3, 4]} />
+                    <meshStandardMaterial
+                      color="#687d77"
+                      transparent={!home}
+                      opacity={home ? 1 : 0.4}
+                      depthWrite={!!home}
+                    />
+                  </mesh>
+                  <Block
+                    position={[0, 0.7, 1.37]}
+                    size={[0.65, 1.3, 0.06]}
+                    color="#7d8d80"
+                    transparent={!home}
+                  />
+                  <Block
+                    position={[0.85, 1.3, 1.38]}
+                    size={[0.55, 0.6, 0.07]}
+                    color="#f5e7b4"
+                    transparent={!home}
+                  />
+                </>
+              ) : (
+                <>
+                  <Block
+                    position={[0, 0.42, 0.8]}
+                    size={[0.08, 0.85, 0.08]}
+                    color="#967f63"
+                  />
+                  <Block
+                    position={[0, 0.85, 0.8]}
+                    size={[0.65, 0.38, 0.1]}
+                    color="#f2ebd6"
+                  />
+                </>
+              )}
+            </group>
+          )
+        })}
+      {homes
+        .filter((home) => plots[home.plot]?.kind === 'house')
+        .map((home) => (
+          <group key={home.owner_id}>
+            {speech(home, plots[home.plot].x, 3.9, plots[home.plot].z)}
           </group>
-        )
-      })}
-      {Array.from({ length: 14 }, (_, i) => (
-        <group
-          key={`tree-${i}`}
-          position={[i % 2 ? 8 : -8, 0, Math.floor(i / 2) * 7 - 21]}
+        ))}
+      <group position={[apartment.x, 0, apartment.z]}>
+        <Block position={[0, 2.4, 0]} size={[7.8, 4.8, 4.4]} color="#d9ccb8" />
+        <Block
+          position={[0, 4.85, 0]}
+          size={[8.2, 0.22, 4.8]}
+          color="#718a82"
+        />
+        <Block
+          position={[0, 2.4, 2.3]}
+          size={[7.9, 0.2, 0.5]}
+          color="#b4a58f"
+        />
+        <Block position={[0, 0.1, 2.7]} size={[8.1, 0.2, 1]} color="#c5bba5" />
+        {plots.slice(12).map((plot, offset) => {
+          const index = offset + 12
+          const home = homes.find((entry) => entry.plot === index)
+          const x = ((plot.room ?? 1) - 2) * 2.5
+          const y = ((plot.floor ?? 1) - 1) * 2.3 + 1.25
+          return (
+            <group
+              key={index}
+              position={[x, y, 2.26]}
+              onClick={(event) => {
+                event.stopPropagation()
+                onSelectPlot(index)
+              }}
+            >
+              <Block
+                position={[0, 0, 0]}
+                size={[1.9, 1.6, 0.1]}
+                color={selectedPlot === index ? '#e7bb58' : '#897e6d'}
+              />
+              <Block
+                position={[0, 0, 0.07]}
+                size={[1.65, 1.35, 0.06]}
+                color={home ? '#f1e3ac' : '#91aeb1'}
+              />
+              <Block
+                position={[0, 0, 0.12]}
+                size={[0.06, 1.35, 0.04]}
+                color="#d7cbb4"
+              />
+            </group>
+          )
+        })}
+        <Html
+          center
+          position={[0, 5.5, 0]}
+          zIndexRange={[5, 0]}
+          style={{ pointerEvents: 'none' }}
         >
-          <mesh position={[0, 0.7, 0]} castShadow>
-            <cylinderGeometry args={[0.15, 0.2, 1.4, 6]} />
-            <meshStandardMaterial color="#8d7960" />
-          </mesh>
-          <mesh position={[0, 2.1, 0]} castShadow>
-            <icosahedronGeometry args={[1.4, 0]} />
-            <meshStandardMaterial color={i % 3 ? '#7b9c76' : '#96af80'} />
-          </mesh>
+          <span className="place-label">こもれび荘</span>
+        </Html>
+      </group>
+      {homes
+        .filter((home) => plots[home.plot]?.kind === 'apartment')
+        .map((home) => {
+          const plot = plots[home.plot]
+          return (
+            <group key={home.owner_id}>
+              {speech(
+                home,
+                apartment.x + ((plot.room ?? 1) - 2) * 2.5,
+                (plot.floor ?? 1) * 2.3 + 1.1,
+                apartment.z + 2.5,
+              )}
+            </group>
+          )
+        })}
+      {Array.from({ length: 27 }, (_, i) => (
+        <Tree
+          key={`forest-${i}`}
+          x={18 + (i % 3) * 4 + (i % 2) * 0.5}
+          z={-23 + Math.floor(i / 3) * 5.3}
+          variant={i % 3}
+        />
+      ))}
+      {[-18, -12, -6, 6, 12, 18].map((z, i) => (
+        <Tree key={`bank-${z}`} x={7} z={z} variant={i % 3} />
+      ))}
+      {[-20, -16, -8].map((x, i) => (
+        <Tree key={`square-${x}`} x={x} z={15} variant={i} />
+      ))}
+      {[-15, -9].map((x) => (
+        <group key={`bench-${x}`} position={[x, 0, 12]}>
+          <Block
+            position={[0, 0.55, 0]}
+            size={[2.2, 0.18, 0.6]}
+            color="#9a795b"
+          />
+          <Block
+            position={[0, 1, -0.27]}
+            size={[2.2, 0.65, 0.12]}
+            color="#ae8b66"
+          />
+          {[-0.8, 0.8].map((leg) => (
+            <Block
+              key={leg}
+              position={[leg, 0.25, 0]}
+              size={[0.15, 0.5, 0.45]}
+              color="#65746a"
+            />
+          ))}
         </group>
       ))}
       <group ref={avatar} position={[0, 0, 18]}>
@@ -223,7 +503,6 @@ function Street({
     </>
   )
 }
-
 class CanvasBoundary extends Component<
   { children: ReactNode },
   { failed: boolean }
@@ -245,21 +524,22 @@ class CanvasBoundary extends Component<
 }
 
 export default function Town(props: Props) {
-  const target = useRef(18)
-  const [position, setPosition] = useState(18)
+  const target = useRef<Position>({ x: 0, z: 18 })
+  const [position, setPosition] = useState<Position>({ x: 0, z: 18 })
   const [ready, setReady] = useState(false)
   return (
     <section
       className="town"
       aria-label="散歩できる3Dの街"
       data-ready={ready}
-      data-position={position.toFixed(1)}
+      data-position={position.z.toFixed(1)}
+      data-position-x={position.x.toFixed(1)}
     >
       <CanvasBoundary>
         <Canvas
           shadows
           dpr={[1, 1.5]}
-          camera={{ position: [0, 9, 29], fov: 48, near: 0.1, far: 70 }}
+          camera={{ position: [0, 13, 33], fov: 48, near: 0.1, far: 95 }}
           onCreated={() => setReady(true)}
           fallback={<p>このブラウザでは3D表示を利用できません。</p>}
         >
@@ -267,14 +547,23 @@ export default function Town(props: Props) {
         </Canvas>
       </CanvasBoundary>
       <div className="town-caption">
-        <span className="dot" /> こもれび通り <span>01</span>
+        <span className="dot" /> こもれびの街 <span>01</span>
       </div>
       <div className="walk-controls">
         <button
           type="button"
+          aria-label="左へ歩く"
+          onClick={() => {
+            target.current = { x: position.x - 6, z: position.z }
+          }}
+        >
+          ←
+        </button>
+        <button
+          type="button"
           aria-label="手前へ歩く"
           onClick={() => {
-            target.current = Math.min(19, position + 6)
+            target.current = { x: position.x, z: position.z + 6 }
           }}
         >
           ↓
@@ -282,16 +571,25 @@ export default function Town(props: Props) {
         <span>
           道をタップして散歩
           <br />
-          <small>キーボードは ↑ ↓ / W S</small>
+          <small>↑ ↓ ← → / W A S D</small>
         </span>
         <button
           type="button"
           aria-label="奥へ歩く"
           onClick={() => {
-            target.current = Math.max(-19, position - 6)
+            target.current = { x: position.x, z: position.z - 6 }
           }}
         >
           ↑
+        </button>
+        <button
+          type="button"
+          aria-label="右へ歩く"
+          onClick={() => {
+            target.current = { x: position.x + 6, z: position.z }
+          }}
+        >
+          →
         </button>
       </div>
     </section>

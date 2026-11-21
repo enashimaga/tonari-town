@@ -29,6 +29,15 @@ beforeAll(async () => {
       'utf8',
     ),
   )
+  await db.exec(
+    readFileSync(
+      new URL(
+        '../supabase/migrations/202609090001_add_apartment_rooms.sql',
+        import.meta.url,
+      ),
+      'utf8',
+    ),
+  )
 })
 afterAll(async () => {
   await db?.close()
@@ -113,7 +122,7 @@ describe('PostgreSQL constraints and RLS', () => {
         asUser(stranger, () => insert(stranger, 1, false, value)),
       ).rejects.toThrow()
     }
-    await expect(asUser(stranger, () => insert(stranger, 12))).rejects.toThrow()
+    await expect(asUser(stranger, () => insert(stranger, 18))).rejects.toThrow()
   })
   it('reserves a plot even when its home is private', async () => {
     await expect(asUser(stranger, () => insert(stranger, 0))).rejects.toThrow()
@@ -162,5 +171,35 @@ describe('PostgreSQL constraints and RLS', () => {
         )
       ).rows,
     ).toHaveLength(1)
+  })
+  it('supports moving to a room, rejects duplicate occupancy and preserves ownership', async () => {
+    await asUser(owner, () => insert(owner, 12, true))
+    await expect(asUser(stranger, () => insert(stranger, 12))).rejects.toThrow()
+    await asUser(stranger, () => insert(stranger, 13))
+    await asUser(owner, () =>
+      db.query('update public.homes set plot = 17 where owner_id = $1', [
+        owner,
+      ]),
+    )
+    expect(
+      (
+        await asUser(owner, () =>
+          db.query('select plot from public.homes where owner_id = $1', [
+            owner,
+          ]),
+        )
+      ).rows,
+    ).toEqual([{ plot: 17 }])
+    expect(
+      (
+        await asUser(stranger, () =>
+          db.query(
+            'update public.homes set plot = 14 where owner_id = $1 returning *',
+            [owner],
+          ),
+        )
+      ).rows,
+    ).toHaveLength(0)
+    await expect(asUser(null, () => insert(owner, 15))).rejects.toThrow()
   })
 })

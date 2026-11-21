@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import { PerspectiveCamera, Vector3 } from 'three'
 import { example } from '../src/partner'
 
 test('renders 3D, walks, validates JSON, saves locally, and reloads', async ({
@@ -73,4 +74,105 @@ test('serves the OAuth callback route through the SPA fallback', async ({
   await expect(
     page.getByRole('heading', { name: /となりの日常を、/ }),
   ).toBeVisible()
+})
+
+test('hides a resident locally without releasing their plot and restores them', async ({
+  page,
+}) => {
+  await page.goto('/')
+  await expect(
+    page.locator('.bubble').filter({ hasText: 'ハル' }),
+  ).toBeVisible()
+  await page.getByText('住人の表示設定', { exact: true }).click()
+  await page.getByRole('button', { name: 'ハルを非表示にする' }).click()
+  await expect(page.locator('.bubble').filter({ hasText: 'ハル' })).toHaveCount(
+    0,
+  )
+  await expect(page.locator('#plot option[value="0"]')).toBeDisabled()
+  await page.reload()
+  await expect(
+    page.getByRole('region', { name: '散歩できる3Dの街' }),
+  ).toHaveAttribute('data-ready', 'true')
+  await expect(page.locator('.bubble').filter({ hasText: 'ハル' })).toHaveCount(
+    0,
+  )
+  await page.getByText('住人の表示設定（1人を非表示）', { exact: true }).click()
+  await page.getByRole('button', { name: '非表示をすべて解除' }).click()
+  await expect(
+    page.locator('.bubble').filter({ hasText: 'ハル' }),
+  ).toBeVisible()
+})
+
+test('moves sideways and saves an apartment room across reloads', async ({
+  page,
+}) => {
+  await page.goto('/')
+  const town = page.getByRole('region', { name: '散歩できる3Dの街' })
+  await expect(town).toHaveAttribute('data-ready', 'true')
+  await page.getByRole('button', { name: '右へ歩く', exact: true }).click()
+  await expect
+    .poll(async () => Number(await town.getAttribute('data-position-x')))
+    .toBeGreaterThan(1)
+  await page.getByLabel('2. 家を置く場所').selectOption('12')
+  await page.getByRole('button', { name: '台詞を確認する' }).click()
+  await page.getByRole('button', { name: 'このブラウザに家を保存' }).click()
+  await expect(page.getByRole('status')).toContainText('このブラウザに保存')
+  await page.reload()
+  await expect(page.getByLabel('2. 家を置く場所')).toHaveValue('12')
+  await page.getByLabel('2. 家を置く場所').selectOption('1')
+  await expect(
+    page.getByText(
+      '保存すると今の住まいから引っ越します。一人につき一軒です。',
+    ),
+  ).toBeVisible()
+  await page.getByRole('button', { name: '台詞を確認する' }).click()
+  await page.getByRole('button', { name: 'このブラウザに家を保存' }).click()
+  await expect(page.getByRole('status')).toContainText('このブラウザに保存')
+  await page.reload()
+  await expect(page.getByLabel('2. 家を置く場所')).toHaveValue('1')
+})
+
+test('selects lots and apartment windows directly on the canvas', async ({
+  page,
+}) => {
+  await page.goto('/')
+  const town = page.getByRole('region', { name: '散歩できる3Dの街' })
+  const canvas = page.locator('canvas')
+  await expect(town).toHaveAttribute('data-ready', 'true')
+  const walk = async (name: string, axis: string, value: number) => {
+    await page.getByRole('button', { name, exact: true }).click()
+    await expect(town).toHaveAttribute(axis, value.toFixed(1))
+  }
+  const clickWorld = async (x: number, y: number, z: number) => {
+    await canvas.scrollIntoViewIfNeeded()
+    // The fixed camera eases into place after the walker stops.
+    await page.waitForTimeout(600)
+    const box = (await canvas.boundingBox())!
+    const walkerX = Number(await town.getAttribute('data-position-x'))
+    const walkerZ = Number(await town.getAttribute('data-position'))
+    const camera = new PerspectiveCamera(48, box.width / box.height, 0.1, 95)
+    camera.position.set(walkerX, 13, walkerZ + 15)
+    camera.lookAt(walkerX, 0, walkerZ - 3)
+    camera.updateMatrixWorld()
+    const point = new Vector3(x, y, z).project(camera)
+    await canvas.click({
+      position: {
+        x: ((point.x + 1) * box.width) / 2,
+        y: ((1 - point.y) * box.height) / 2,
+      },
+    })
+  }
+
+  await walk('奥へ歩く', 'data-position', 12)
+  await clickWorld(-4, 0.85, 9.8)
+  await expect(page.locator('#plot')).toHaveValue('2')
+  await walk('奥へ歩く', 'data-position', 6)
+  await walk('奥へ歩く', 'data-position', 0)
+  await walk('左へ歩く', 'data-position-x', -6)
+  await walk('左へ歩く', 'data-position-x', -12)
+  await clickWorld(-13, 3.55, -4.62)
+  await expect(page.locator('#plot')).toHaveValue('16')
+  await expect(
+    page.getByRole('button', { name: '自分の家を削除する' }),
+  ).toHaveCount(0)
 })

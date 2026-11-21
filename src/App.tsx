@@ -10,6 +10,11 @@ import {
 } from './backend'
 import { example, parsePartner, type Partner } from './partner'
 import { demoHomes, demoOwner, plots, type Home } from './world'
+import {
+  hiddenHomesKey,
+  loadHiddenOwners,
+  saveHiddenOwners,
+} from './hiddenHomes'
 
 const Town = lazy(() => import('./Town'))
 const initialInput = JSON.stringify(example, null, 2)
@@ -58,8 +63,32 @@ export default function App() {
   const [status, setStatus] = useState('')
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
+  const [hiddenOwners, setHiddenOwners] = useState(loadHiddenOwners)
   const requestVersion = useRef(0)
   const currentIdentity = useRef<string | null | undefined>(undefined)
+
+  useEffect(() => {
+    const sync = (event: StorageEvent) => {
+      if (event.key === hiddenHomesKey || event.key === null)
+        setHiddenOwners(loadHiddenOwners())
+    }
+    window.addEventListener('storage', sync)
+    return () => window.removeEventListener('storage', sync)
+  }, [])
+
+  function updateHiddenOwners(next: Set<string>) {
+    try {
+      saveHiddenOwners(next)
+      setHiddenOwners(next)
+      setError('')
+    } catch (error) {
+      setError(
+        error instanceof Error
+          ? error.message
+          : '非表示の設定を保存できませんでした。',
+      )
+    }
+  }
 
   useEffect(() => {
     if (!supabase) return
@@ -281,7 +310,7 @@ export default function App() {
             <p>
               家のそばに立ち止まると、パートナーの声が見えてくる。
               <br />
-              こもれび通りを、ゆっくり歩いてみよう。
+              川沿いの道や林を、ゆっくり歩いてみよう。
             </p>
           </div>
           <label className="time-control">
@@ -315,7 +344,30 @@ export default function App() {
               <div className="town canvas-fallback">街を準備しています…</div>
             }
           >
-            <Town homes={visibleHomes} hour={hour} />
+            <Town
+              homes={visibleHomes}
+              hour={hour}
+              selectedPlot={plot}
+              hiddenOwners={
+                new Set(
+                  [...hiddenOwners].filter(
+                    (id) => id !== own?.owner_id && id !== user?.id,
+                  ),
+                )
+              }
+              onSelectPlot={(next) => {
+                if (occupied.has(next)) {
+                  setStatus(
+                    'この場所は入居済みです。空いている場所を選んでください。',
+                  )
+                  return
+                }
+                setPlot(next)
+                setStatus(
+                  `${plots[next].label}を選びました。台詞を確認して保存すると入居できます。`,
+                )
+              }}
+            />
           </Suspense>
           <aside className="editor">
             <p className="eyebrow">YOUR LITTLE HOME</p>
@@ -351,22 +403,30 @@ export default function App() {
               </div>
             )}
             <label htmlFor="plot">2. 家を置く場所</label>
+            <p className="muted">
+              街の空き地やマンションの窓をクリックして選べます。保存するまでは仮表示です。
+            </p>
             <select
               id="plot"
               value={plot}
               onChange={(e) => setPlot(Number(e.target.value))}
             >
-              {plots.map((_, index) => (
+              {plots.map((place, index) => (
                 <option
                   key={index}
                   value={index}
                   disabled={occupied.has(index)}
                 >
-                  こもれび通り {String(index + 1).padStart(2, '0')} 番地
+                  {place.label}
                   {occupied.has(index) ? '（入居済み）' : ''}
                 </option>
               ))}
             </select>
+            {own && own.plot !== plot && (
+              <p className="muted">
+                保存すると今の住まいから引っ越します。一人につき一軒です。
+              </p>
+            )}
             {!demoMode && (
               <label className="checkbox">
                 <input
@@ -414,6 +474,53 @@ export default function App() {
                 {error}
               </p>
             )}
+            <details>
+              <summary>
+                住人の表示設定
+                {hiddenOwners.size > 0
+                  ? `（${hiddenOwners.size}人を非表示）`
+                  : ''}
+              </summary>
+              <p>
+                このブラウザで、選んだ住人の名前と台詞を表示しません。入居済みの建物は残ります。別の端末には引き継がれず、サイトデータを消すと設定も消えます。
+              </p>
+              <ul className="resident-list">
+                {homes
+                  .filter(
+                    (home) =>
+                      home.owner_id !== own?.owner_id &&
+                      home.owner_id !== user?.id &&
+                      !hiddenOwners.has(home.owner_id),
+                  )
+                  .map((home) => (
+                    <li key={home.owner_id}>
+                      <span>
+                        {home.partner.partnerName}
+                        <small>{plots[home.plot]?.label}</small>
+                      </span>
+                      <button
+                        type="button"
+                        aria-label={`${home.partner.partnerName}を非表示にする`}
+                        onClick={() =>
+                          updateHiddenOwners(
+                            new Set([...hiddenOwners, home.owner_id]),
+                          )
+                        }
+                      >
+                        非表示
+                      </button>
+                    </li>
+                  ))}
+              </ul>
+              {hiddenOwners.size > 0 && (
+                <button
+                  type="button"
+                  onClick={() => updateHiddenOwners(new Set())}
+                >
+                  非表示をすべて解除
+                </button>
+              )}
+            </details>
             <details>
               <summary>パートナーに渡すテンプレート</summary>
               <p>
