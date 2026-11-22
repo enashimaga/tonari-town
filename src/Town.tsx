@@ -301,9 +301,11 @@ export default function Town(props: Props) {
             type="button"
             role="radio"
             aria-checked={id === look}
-            onClick={() => {
+            onClick={(event) => {
               setLook(id)
               rememberLook(id)
+              // A focused button swallows WASD, so mouse picks hand focus back to the town.
+              if (event.detail > 0) event.currentTarget.blur()
             }}
           >
             {looks[id].label}
