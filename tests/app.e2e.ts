@@ -153,6 +153,38 @@ test('renders 3D, walks, validates JSON, saves locally, and reloads', async ({
   })
 })
 
+test('keyboard walking updates proximity and preserves live coordinates across UI changes', async ({
+  page,
+}) => {
+  await page.goto('/')
+  const town = page.getByRole('region', { name: '散歩できる3Dの街' })
+  await expect(town).toHaveAttribute('data-ready', 'true')
+  await expect(
+    page.locator('.bubble').filter({ hasText: 'ハル' }),
+  ).toBeVisible()
+  await page.keyboard.down('d')
+  await expect
+    .poll(async () => Number(await town.getAttribute('data-position-x')))
+    .toBeGreaterThan(6)
+  await page.keyboard.up('d')
+  await expect(page.locator('.bubble')).toHaveCount(0)
+  await page.waitForTimeout(400)
+  const x = await town.getAttribute('data-position-x')
+  await page.getByLabel('街の時間').selectOption('14')
+  await expect(town).toHaveAttribute('data-position-x', x!)
+  await page.waitForTimeout(400)
+  await expect(town).toHaveAttribute('data-position-x', x!)
+  await page.getByLabel('街の時間').blur()
+  await page.keyboard.down('a')
+  await expect
+    .poll(async () => Number(await town.getAttribute('data-position-x')))
+    .toBeLessThan(0.5)
+  await page.keyboard.up('a')
+  await expect(
+    page.locator('.bubble').filter({ hasText: 'ハル' }),
+  ).toBeVisible()
+})
+
 test('serves the OAuth callback route through the SPA fallback', async ({
   page,
 }) => {
