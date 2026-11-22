@@ -299,7 +299,7 @@ export default function App() {
             ))}
         </div>
       </header>
-      <LegalLinks />
+      <LegalLinks newTab />
       <main>
         <div className="intro">
           <div>
@@ -536,7 +536,7 @@ export default function App() {
       </main>
       <footer>
         <span>となり街</span>
-        <LegalLinks />
+        <LegalLinks newTab />
         <span>家の明かりが、ひとつずつ。</span>
       </footer>
     </div>

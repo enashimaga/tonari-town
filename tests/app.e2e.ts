@@ -4,34 +4,55 @@ import { example } from '../src/partner'
 
 test('legal links navigate to Japanese pages with direct SPA access', async ({
   page,
+  context,
 }) => {
   const errors: string[] = []
   page.on('pageerror', (error) => errors.push(error.message))
   await page.goto('/')
+  const textarea = page.getByLabel('1. 台詞のJSONを貼り付ける')
+  const draft = JSON.stringify({ ...example, partnerName: '未保存の台詞' })
+  await textarea.fill(draft)
+  await page.getByRole('button', { name: '台詞を確認する' }).click()
+  for (const link of await page.locator('.legal-links a').all()) {
+    await expect(link).toHaveAttribute('target', '_blank')
+    await expect(link).toHaveAttribute('rel', 'noopener noreferrer')
+  }
+  const termsOpened = context.waitForEvent('page')
   await page
     .getByRole('link', { name: '利用規約', exact: true })
     .first()
     .click()
-  await expect(page).toHaveURL(/\/terms$/)
+  const legalPage = await termsOpened
+  await expect(legalPage).toHaveURL(/\/terms$/)
   await expect(
-    page.getByRole('heading', { name: '利用規約', exact: true }),
+    legalPage.getByRole('heading', { name: '利用規約', exact: true }),
   ).toBeVisible()
-  await expect(page.getByRole('main')).toContainText('日本法')
-  await expect(page.getByRole('main')).toContainText('【お問い合わせ先】')
-  await page
+  await expect(legalPage.getByRole('main')).toContainText('日本法')
+  await expect(legalPage.getByRole('main')).toContainText('【お問い合わせ先】')
+  await legalPage
     .getByRole('link', { name: 'プライバシーポリシー', exact: true })
     .click()
-  await expect(page).toHaveURL(/\/privacy$/)
-  await expect(page.getByRole('main')).toContainText('localStorage')
-  await expect(page.getByRole('main')).toContainText('owner_id')
-  await expect(page.getByRole('main')).toContainText('Cloudflare')
-  await page.getByRole('link', { name: '街に戻る', exact: true }).click()
+  await expect(legalPage).toHaveURL(/\/privacy$/)
+  await expect(legalPage.getByRole('main')).toContainText('localStorage')
+  await expect(legalPage.getByRole('main')).toContainText('owner_id')
+  await expect(legalPage.getByRole('main')).toContainText('Cloudflare')
+  await legalPage.getByRole('link', { name: '街に戻る', exact: true }).click()
+  await expect(legalPage).toHaveURL(/\/$/)
+  await legalPage.close()
   await expect(page).toHaveURL(/\/$/)
+  const privacyOpened = context.waitForEvent('page')
   await page
     .locator('footer')
     .getByRole('link', { name: 'プライバシーポリシー', exact: true })
     .click()
-  await expect(page).toHaveURL(/\/privacy$/)
+  const privacyPage = await privacyOpened
+  await expect(privacyPage).toHaveURL(/\/privacy$/)
+  await privacyPage.close()
+  await expect(page).toHaveURL(/\/$/)
+  await expect(textarea).toHaveValue(draft)
+  await expect(page.getByLabel('公開前の台詞プレビュー')).toContainText(
+    '未保存の台詞',
+  )
   for (const [path, title] of [
     ['/terms', '利用規約'],
     ['/privacy', 'プライバシーポリシー'],

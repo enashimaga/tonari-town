@@ -1,10 +1,16 @@
 type LegalPageName = 'terms' | 'privacy'
 
-export function LegalLinks() {
+export function LegalLinks({ newTab = false }: { newTab?: boolean }) {
+  const target = newTab ? '_blank' : undefined
+  const rel = newTab ? 'noopener noreferrer' : undefined
   return (
     <nav className="legal-links" aria-label="利用に関する情報">
-      <a href="/terms">利用規約</a>
-      <a href="/privacy">プライバシーポリシー</a>
+      <a href="/terms" target={target} rel={rel}>
+        利用規約
+      </a>
+      <a href="/privacy" target={target} rel={rel}>
+        プライバシーポリシー
+      </a>
     </nav>
   )
 }
