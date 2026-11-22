@@ -582,7 +582,14 @@ footer {
     left: 12px;
     right: 12px;
     max-width: none;
+    flex-wrap: nowrap;
+    padding: 5px;
   }
+  .look-switcher button {
+    flex: 1;
+    padding: 4px 2px;
+  }
+  .look-switcher > span,
   .look-switcher small {
     display: none;
   }
