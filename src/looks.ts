@@ -137,7 +137,7 @@ export const looks: Record<LookId, Look> = {
 export const lookIds = Object.keys(looks) as LookId[]
 
 function isLookId(value: string | null): value is LookId {
-  return !!value && value in looks
+  return !!value && Object.hasOwn(looks, value)
 }
 
 export function initialLook(): LookId {
