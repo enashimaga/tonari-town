@@ -2,6 +2,60 @@ import { expect, test } from '@playwright/test'
 import { PerspectiveCamera, Vector3 } from 'three'
 import { example } from '../src/partner'
 
+test('legal links navigate to Japanese pages with direct SPA access', async ({
+  page,
+}) => {
+  const errors: string[] = []
+  page.on('pageerror', (error) => errors.push(error.message))
+  await page.goto('/')
+  await page
+    .getByRole('link', { name: '利用規約', exact: true })
+    .first()
+    .click()
+  await expect(page).toHaveURL(/\/terms$/)
+  await expect(
+    page.getByRole('heading', { name: '利用規約', exact: true }),
+  ).toBeVisible()
+  await expect(page.getByRole('main')).toContainText('日本法')
+  await expect(page.getByRole('main')).toContainText('【お問い合わせ先】')
+  await page
+    .getByRole('link', { name: 'プライバシーポリシー', exact: true })
+    .click()
+  await expect(page).toHaveURL(/\/privacy$/)
+  await expect(page.getByRole('main')).toContainText('localStorage')
+  await expect(page.getByRole('main')).toContainText('owner_id')
+  await expect(page.getByRole('main')).toContainText('Cloudflare')
+  await page.getByRole('link', { name: '街に戻る', exact: true }).click()
+  await expect(page).toHaveURL(/\/$/)
+  await page
+    .locator('footer')
+    .getByRole('link', { name: 'プライバシーポリシー', exact: true })
+    .click()
+  await expect(page).toHaveURL(/\/privacy$/)
+  for (const [path, title] of [
+    ['/terms', '利用規約'],
+    ['/privacy', 'プライバシーポリシー'],
+  ]) {
+    const response = await page.goto(path)
+    expect(response?.status()).toBe(200)
+    await page.reload()
+    await expect(
+      page.getByRole('heading', { name: title, exact: true }),
+    ).toBeVisible()
+    await expect(page.locator('canvas')).toHaveCount(0)
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth,
+      ),
+    ).toBe(true)
+    await page.screenshot({
+      path: `test-results/${test.info().project.name}-${path.slice(1)}.png`,
+      fullPage: true,
+    })
+  }
+  expect(errors).toEqual([])
+})
+
 test('renders 3D, walks, validates JSON, saves locally, and reloads', async ({
   page,
 }) => {

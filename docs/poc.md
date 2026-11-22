@@ -37,7 +37,7 @@ Supabaseの既定のテーブル権限に依存せず、マイグレーション
 1. X開発者アカウントでこのアプリを登録する。
 2. SupabaseのAuthentication → Sign In / Providersで **X / Twitter (OAuth 2.0)** を選び、Callback URLを確認する。
 3. X側のユーザー認証設定でWeb Appを選び、Callback URLにSupabaseのURLを登録する。
-4. X側にWebサイト、利用規約、プライバシーポリシーのURLを登録する。これらの公開ページはこのPoCにはまだ含まれないため、実際の運用内容に合わせて用意する。
+4. X側にWebサイト、利用規約、プライバシーポリシーのURLを登録する。利用規約は `/terms`、プライバシーポリシーは `/privacy` に実装済み。公開前に `【運営者名】`・`【お問い合わせ先】`・`【施行日】` を置き換え、実際の運用と法的内容を確認する。デプロイ後に各URLの直接表示・再読み込みを確認する。
 5. XのClient IDとClient SecretをSupabaseのプロバイダー設定に入れる。アプリの `.env.local` には入れない。
 6. SupabaseのURL ConfigurationにアプリのSite URLと、許可するRedirect URLを登録する。
 7. アプリで「Xでログイン」を押し、同意画面の権限を確認してログインする。
@@ -76,7 +76,13 @@ URLの役割は次のように分かれます。
 - SupabaseのRedirect URLsに追加：`https://tonari-town.tonari-town.workers.dev/auth/callback`
 - ローカル検証を続ける場合は `http://127.0.0.1:5201/auth/callback` も許可リストに残す。
 - XのWebsite URL：`https://tonari-town.tonari-town.workers.dev/`
+- XのTerms of Service URL：`https://tonari-town.tonari-town.workers.dev/terms`
+- XのPrivacy Policy URL：`https://tonari-town.tonari-town.workers.dev/privacy`
 - XのCallback URL：Supabaseの `/auth/v1/callback` のまま。
+
+アプリのOAuth呼び出しは追加の `scopes` を指定しません。Supabase/X側の実際のスコープはローカルコードからは確定できないため、公開前に設定と同意画面で確認し、ログインに不要な権限を外してください。アプリは投稿・DM・フォロー操作を実装していません。
+
+街ではXの名前・ハンドル・画像を自動表示せず、登録したパートナー名と台詞を表示します。ただし公開homesデータにはowner_idが含まれ、完全匿名ではありません。一認証ユーザー一軒のDB制約は、同一人物による複数Xアカウントの利用を完全に防ぐものではありません。認証アカウント削除・通報対応は運営者への連絡による手動対応が必要です。
 
 WranglerはCloudflareの公式CLIです。ビルドしたアプリの配信・更新に使います。Remote SSH環境では `npx wrangler login --device --browser=false` でログインでき、認証用のポート転送は不要です。
 

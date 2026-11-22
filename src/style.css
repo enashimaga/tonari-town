@@ -10,6 +10,30 @@
 * {
   box-sizing: border-box;
 }
+.legal-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 20px;
+  padding: 12px 0;
+}
+.legal-links a,
+.legal-document a {
+  color: inherit;
+}
+.legal-shell {
+  max-width: 960px;
+}
+.legal-document {
+  padding: 28px 0;
+  overflow-wrap: anywhere;
+}
+.legal-document h1 {
+  font-size: clamp(24px, 5vw, 36px);
+}
+.legal-document h2 {
+  margin-top: 32px;
+  font-size: 20px;
+}
 body {
   margin: 0;
 }
