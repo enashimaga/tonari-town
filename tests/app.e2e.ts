@@ -2,6 +2,93 @@ import { expect, test } from '@playwright/test'
 import { PerspectiveCamera, Vector3 } from 'three'
 import { example } from '../src/partner'
 
+test('legal links navigate to Japanese pages with direct SPA access', async ({
+  page,
+  context,
+}) => {
+  const errors: string[] = []
+  page.on('pageerror', (error) => errors.push(error.message))
+  await page.goto('/')
+  const textarea = page.getByLabel('1. 台詞のJSONを貼り付ける')
+  const draft = JSON.stringify({ ...example, partnerName: '未保存の台詞' })
+  await textarea.fill(draft)
+  await page.getByRole('button', { name: '台詞を確認する' }).click()
+  for (const link of await page.locator('.legal-links a').all()) {
+    await expect(link).toHaveAttribute('target', '_blank')
+    await expect(link).toHaveAttribute('rel', 'noopener noreferrer')
+  }
+  const termsOpened = context.waitForEvent('page')
+  await page
+    .getByRole('link', { name: '利用規約', exact: true })
+    .first()
+    .click()
+  const legalPage = await termsOpened
+  await expect(legalPage).toHaveURL(/\/terms$/)
+  await expect(
+    legalPage.getByRole('heading', { name: '利用規約', exact: true }),
+  ).toBeVisible()
+  await expect(legalPage.getByRole('main')).toContainText('日本法')
+  await expect(legalPage.getByRole('main')).toContainText('@Enashimaga3')
+  await legalPage
+    .getByRole('link', { name: 'プライバシーポリシー', exact: true })
+    .click()
+  await expect(legalPage).toHaveURL(/\/privacy$/)
+  await expect(legalPage.getByRole('main')).toContainText('localStorage')
+  await expect(legalPage.getByRole('main')).toContainText('owner_id')
+  await expect(legalPage.getByRole('main')).toContainText('Cloudflare')
+  await legalPage.getByRole('link', { name: '街に戻る', exact: true }).click()
+  await expect(legalPage).toHaveURL(/\/$/)
+  await legalPage.close()
+  await expect(page).toHaveURL(/\/$/)
+  const privacyOpened = context.waitForEvent('page')
+  await page
+    .locator('footer')
+    .getByRole('link', { name: 'プライバシーポリシー', exact: true })
+    .click()
+  const privacyPage = await privacyOpened
+  await expect(privacyPage).toHaveURL(/\/privacy$/)
+  await privacyPage.close()
+  await expect(page).toHaveURL(/\/$/)
+  await expect(textarea).toHaveValue(draft)
+  await expect(page.getByLabel('公開前の台詞プレビュー')).toContainText(
+    '未保存の台詞',
+  )
+  for (const [path, title] of [
+    ['/terms', '利用規約'],
+    ['/privacy', 'プライバシーポリシー'],
+  ]) {
+    const response = await page.goto(path)
+    expect(response?.status()).toBe(200)
+    await page.reload()
+    await expect(
+      page.getByRole('heading', { name: title, exact: true }),
+    ).toBeVisible()
+    await expect(page.locator('canvas')).toHaveCount(0)
+    await expect(page.getByRole('main')).toContainText('施行日：2026年11月22日')
+    await expect(page.getByRole('main')).toContainText('運営者：@Enashimaga3')
+    const contacts = page.getByRole('link', {
+      name: 'X (https://x.com/Enashimaga3)',
+      exact: true,
+    })
+    await expect(contacts).toHaveCount(2)
+    for (const contact of await contacts.all()) {
+      await expect(contact).toHaveAttribute('href', 'https://x.com/Enashimaga3')
+      await expect(contact).toHaveAttribute('target', '_blank')
+      await expect(contact).toHaveAttribute('rel', 'noopener noreferrer')
+    }
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth,
+      ),
+    ).toBe(true)
+    await page.screenshot({
+      path: `test-results/${test.info().project.name}-${path.slice(1)}.png`,
+      fullPage: true,
+    })
+  }
+  expect(errors).toEqual([])
+})
+
 test('renders 3D, walks, validates JSON, saves locally, and reloads', async ({
   page,
 }) => {

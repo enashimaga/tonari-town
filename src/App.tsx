@@ -1,5 +1,6 @@
 import { lazy, Suspense, useEffect, useRef, useState } from 'react'
 import type { User } from '@supabase/supabase-js'
+import { LegalLinks } from './LegalPage'
 import {
   configurationError,
   supabase,
@@ -298,6 +299,7 @@ export default function App() {
             ))}
         </div>
       </header>
+      <LegalLinks newTab />
       <main>
         <div className="intro">
           <div>
@@ -534,6 +536,7 @@ export default function App() {
       </main>
       <footer>
         <span>となり街</span>
+        <LegalLinks newTab />
         <span>家の明かりが、ひとつずつ。</span>
       </footer>
     </div>

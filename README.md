@@ -73,6 +73,12 @@ npm run cf:dev
 
 ## 外部サービスへの接続
 
+利用規約は `/terms`、プライバシーポリシーは `/privacy` です。ログイン付近とフッターのリンクから閲覧でき、CloudflareのSPA fallbackで直接アクセス・再読み込みにも対応します。
+
+運営者は @Enashimaga3、お問い合わせ先は <a href="https://x.com/Enashimaga3" target="_blank" rel="noopener noreferrer">X (https://x.com/Enashimaga3)</a>、施行日は2026年11月22日です。Xの設定にはWebsite URLとして街のURL、Terms of Serviceとして `/terms`、Privacy Policyとして `/privacy` の公開URLを登録します。
+
+アプリはXログイン時に追加スコープを指定しません。実際の要求権限はSupabase/Xの設定・同意画面で確認し、最小限にしてください。街にはXプロフィールではなく登録したパートナー名・台詞を表示しますが、公開データにはSupabaseの所有者IDも含むため完全匿名ではありません。一認証ユーザー一軒の制約はありますが、同一人物の複数Xアカウントを検知する実装はありません。
+
 アカウント作成後の設定方法と、確認済み・未確認の項目は [docs/poc.md](docs/poc.md) に記録しています。
 
 公開用のSupabase URL・Publishable keyだけを `.env.local` に設定します。XのClient SecretはSupabaseの管理画面に設定し、このアプリの環境変数には入れません。
