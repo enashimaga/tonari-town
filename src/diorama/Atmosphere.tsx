@@ -127,7 +127,13 @@ export function TiltShift({
     composer.addPass(new OutputPass())
     return { composer, pass }
   }, [gl, scene, camera])
-  useEffect(() => () => composer.dispose(), [composer])
+  useEffect(
+    () => () => {
+      composer.passes.forEach((pass) => pass.dispose())
+      composer.dispose()
+    },
+    [composer],
+  )
   useEffect(() => {
     composer.setPixelRatio(viewport.dpr)
     composer.setSize(size.width, size.height)
