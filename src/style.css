@@ -536,3 +536,54 @@ footer {
     font-size: 10px;
   }
 }
+.look-switcher {
+  position: absolute;
+  z-index: 11;
+  top: 18px;
+  right: 18px;
+  max-width: 260px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: flex-end;
+  background: #fffdf5ee;
+  border-radius: 12px;
+  padding: 8px 10px;
+  box-shadow: 0 4px 20px #30463e14;
+  font-size: 11px;
+}
+.look-switcher > span {
+  width: 100%;
+  text-align: right;
+  color: #748075;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+}
+.look-switcher button {
+  font-size: 11px;
+  padding: 4px 9px;
+  border-radius: 20px;
+}
+.look-switcher button[aria-checked='true'] {
+  background: #4f6b59;
+  color: #fffdf5;
+  border-color: #4f6b59;
+}
+.look-switcher small {
+  width: 100%;
+  color: #5f6d63;
+  font-size: 10px;
+  line-height: 1.5;
+  text-align: right;
+}
+@media (max-width: 640px) {
+  .look-switcher {
+    top: 64px;
+    left: 12px;
+    right: 12px;
+    max-width: none;
+  }
+  .look-switcher small {
+    display: none;
+  }
+}

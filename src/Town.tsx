@@ -1,5 +1,5 @@
 import { Canvas, useFrame } from '@react-three/fiber'
-import { Html } from '@react-three/drei'
+import { Html, PerformanceMonitor } from '@react-three/drei'
 import {
   Component,
   useEffect,
@@ -9,7 +9,10 @@ import {
   type RefObject,
 } from 'react'
 import { Group, Vector3, type Camera, type Object3D } from 'three'
-import { pickLine } from './partner'
+import { Atmosphere, TiltShift } from './diorama/Atmosphere'
+import { Scenery } from './diorama/Scenery'
+import { initialLook, lookIds, looks, rememberLook, type LookId } from './looks'
+import { currentScene, pickLine } from './partner'
 import { apartment, plots, moveToward, type Home, type Position } from './world'
 
 type Props = {
@@ -19,7 +22,6 @@ type Props = {
   onSelectPlot: (plot: number) => void
   hiddenOwners: ReadonlySet<string>
 }
-const colors = ['#dfbba1', '#b1c2ad', '#e4d2a6', '#adc2ca']
 const projectedLabel = new Vector3()
 
 function bubblePosition(
@@ -37,55 +39,6 @@ function bubblePosition(
   ]
 }
 
-function Block({
-  position,
-  size,
-  color,
-  transparent = false,
-}: {
-  position: [number, number, number]
-  size: [number, number, number]
-  color: string
-  transparent?: boolean
-}) {
-  return (
-    <mesh position={position} castShadow={!transparent} receiveShadow>
-      <boxGeometry args={size} />
-      <meshStandardMaterial
-        color={color}
-        transparent={transparent}
-        opacity={transparent ? 0.4 : 1}
-        depthWrite={!transparent}
-      />
-    </mesh>
-  )
-}
-
-function Tree({
-  x,
-  z,
-  variant = 0,
-}: {
-  x: number
-  z: number
-  variant?: number
-}) {
-  return (
-    <group position={[x, 0, z]}>
-      <mesh position={[0, 0.8, 0]} castShadow>
-        <cylinderGeometry args={[0.16, 0.24, 1.6, 6]} />
-        <meshStandardMaterial color="#92745b" />
-      </mesh>
-      <mesh position={[0, 2.3 + variant * 0.15, 0]} castShadow>
-        <icosahedronGeometry args={[1.5 + variant * 0.1, 0]} />
-        <meshStandardMaterial
-          color={['#789a76', '#98b284', '#658b73'][variant % 3]}
-        />
-      </mesh>
-    </group>
-  )
-}
-
 function Street({
   homes,
   hour,
@@ -94,7 +47,11 @@ function Street({
   hiddenOwners,
   target,
   setPosition,
+  look,
+  effects,
 }: Props & {
+  look: LookId
+  effects: boolean
   target: RefObject<Position>
   setPosition: (position: Position) => void
 }) {
@@ -106,6 +63,7 @@ function Street({
   const cameraTarget = useRef(new Vector3())
   const elapsed = useRef(0)
   const occupied = homes.map((home) => home.plot)
+  const night = currentScene(hour) === 'night'
 
   useEffect(() => {
     const down = (event: KeyboardEvent) => {
@@ -216,225 +174,22 @@ function Street({
 
   return (
     <>
-      <color attach="background" args={['#e6eee8']} />
-      <fog attach="fog" args={['#e6eee8', 35, 75]} />
-      <ambientLight intensity={1.6} />
-      <directionalLight
-        position={[8, 22, 12]}
-        intensity={2}
-        castShadow
-        shadow-mapSize={[2048, 2048]}
-        shadow-camera-left={-30}
-        shadow-camera-right={30}
-        shadow-camera-top={30}
-        shadow-camera-bottom={-30}
-        shadow-normalBias={0.04}
+      <Atmosphere look={looks[look]} night={night} />
+      <Scenery
+        look={look}
+        night={night}
+        homes={homes}
+        selectedPlot={selectedPlot}
+        onSelectPlot={onSelectPlot}
+        target={target}
       />
-      <group
-        onClick={(event) => {
-          event.stopPropagation()
-          target.current = { x: event.point.x, z: event.point.z }
-        }}
-      >
-        <Block position={[2, -0.15, 0]} size={[62, 0.3, 62]} color="#bdcba5" />
-        <Block position={[0, 0.015, 0]} size={[4, 0.03, 43]} color="#e8ddc6" />
-        <Block
-          position={[3, 0.025, 0]}
-          size={[49, 0.04, 3.8]}
-          color="#e8ddc6"
-        />
-        <Block
-          position={[-13, 0.025, 3]}
-          size={[3.4, 0.04, 18]}
-          color="#e8ddc6"
-        />
-        <Block position={[8.2, 0.02, 0]} size={[2, 0.04, 48]} color="#dcd7b5" />
-        <Block
-          position={[15.6, 0.02, 0]}
-          size={[2, 0.04, 48]}
-          color="#dcd7b5"
-        />
-        <Block
-          position={[21, 0.025, -10]}
-          size={[2.8, 0.04, 22]}
-          color="#d6c8a9"
-        />
-        <Block
-          position={[-10, 0.03, 10]}
-          size={[10, 0.04, 7]}
-          color="#dfd7bd"
-        />
-        <Block position={[12, 0.025, 0]} size={[4, 0.04, 62]} color="#85b9c4" />
-        <Block
-          position={[12, 0.07, 0]}
-          size={[5.6, 0.1, 3.8]}
-          color="#c5a783"
-        />
-        {Array.from({ length: 8 }, (_, i) => (
-          <Block
-            key={i}
-            position={[9.6 + i * 0.7, 0.13, 0]}
-            size={[0.05, 0.015, 3.75]}
-            color="#9b856e"
-          />
-        ))}
-      </group>
-      {[-1, 1].map((side) => (
-        <group key={side}>
-          <Block
-            position={[12, 0.75, side * 1.9]}
-            size={[5.6, 0.14, 0.14]}
-            color="#9a7b5e"
-          />
-          {[9.5, 12, 14.5].map((x) => (
-            <Block
-              key={x}
-              position={[x, 0.4, side * 1.9]}
-              size={[0.15, 0.8, 0.15]}
-              color="#9a7b5e"
-            />
-          ))}
-        </group>
-      ))}
-      {Array.from({ length: 12 }, (_, i) => (
-        <Block
-          key={`ripple-${i}`}
-          position={[11 + (i % 3) * 0.8, 0.055, -25 + i * 4.4]}
-          size={[0.7, 0.012, 0.07]}
-          color="#b8d8d9"
-        />
-      ))}
-      {plots
-        .filter((plot) => plot.kind === 'house')
-        .map((plot, index) => {
-          const home = homes.find((entry) => entry.plot === index)
-          const selected = selectedPlot === index
-          return (
-            <group
-              key={index}
-              position={[plot.x, 0, plot.z]}
-              onClick={(event) => {
-                event.stopPropagation()
-                onSelectPlot(index)
-              }}
-            >
-              <Block
-                position={[0, 0.04, 0]}
-                size={[3.6, 0.08, 4]}
-                color={selected ? '#dfbf6b' : home ? '#cdd5b7' : '#aabb97'}
-              />
-              {home || selected ? (
-                <>
-                  <Block
-                    position={[0, 1.05, 0]}
-                    size={[2.7, 2, 2.7]}
-                    color={colors[index % colors.length]}
-                    transparent={!home}
-                  />
-                  <mesh
-                    position={[0, 2.5, 0]}
-                    rotation={[0, Math.PI / 4, 0]}
-                    castShadow={!!home}
-                  >
-                    <coneGeometry args={[2.25, 1.3, 4]} />
-                    <meshStandardMaterial
-                      color="#687d77"
-                      transparent={!home}
-                      opacity={home ? 1 : 0.4}
-                      depthWrite={!!home}
-                    />
-                  </mesh>
-                  <Block
-                    position={[0, 0.7, 1.37]}
-                    size={[0.65, 1.3, 0.06]}
-                    color="#7d8d80"
-                    transparent={!home}
-                  />
-                  <Block
-                    position={[0.85, 1.3, 1.38]}
-                    size={[0.55, 0.6, 0.07]}
-                    color="#f5e7b4"
-                    transparent={!home}
-                  />
-                </>
-              ) : (
-                <>
-                  <Block
-                    position={[0, 0.42, 0.8]}
-                    size={[0.08, 0.85, 0.08]}
-                    color="#967f63"
-                  />
-                  <Block
-                    position={[0, 0.85, 0.8]}
-                    size={[0.65, 0.38, 0.1]}
-                    color="#f2ebd6"
-                  />
-                </>
-              )}
-            </group>
-          )
-        })}
       {homes
         .filter((home) => plots[home.plot]?.kind === 'house')
         .map((home) => (
           <group key={home.owner_id}>
-            {speech(home, plots[home.plot].x, 3.9, plots[home.plot].z)}
+            {speech(home, plots[home.plot].x, 4.3, plots[home.plot].z)}
           </group>
         ))}
-      <group position={[apartment.x, 0, apartment.z]}>
-        <Block position={[0, 2.4, 0]} size={[7.8, 4.8, 4.4]} color="#d9ccb8" />
-        <Block
-          position={[0, 4.85, 0]}
-          size={[8.2, 0.22, 4.8]}
-          color="#718a82"
-        />
-        <Block
-          position={[0, 2.4, 2.3]}
-          size={[7.9, 0.2, 0.5]}
-          color="#b4a58f"
-        />
-        <Block position={[0, 0.1, 2.7]} size={[8.1, 0.2, 1]} color="#c5bba5" />
-        {plots.slice(12).map((plot, offset) => {
-          const index = offset + 12
-          const home = homes.find((entry) => entry.plot === index)
-          const x = ((plot.room ?? 1) - 2) * 2.5
-          const y = ((plot.floor ?? 1) - 1) * 2.3 + 1.25
-          return (
-            <group
-              key={index}
-              position={[x, y, 2.26]}
-              onClick={(event) => {
-                event.stopPropagation()
-                onSelectPlot(index)
-              }}
-            >
-              <Block
-                position={[0, 0, 0]}
-                size={[1.9, 1.6, 0.1]}
-                color={selectedPlot === index ? '#e7bb58' : '#897e6d'}
-              />
-              <Block
-                position={[0, 0, 0.07]}
-                size={[1.65, 1.35, 0.06]}
-                color={home ? '#f1e3ac' : '#91aeb1'}
-              />
-              <Block
-                position={[0, 0, 0.12]}
-                size={[0.06, 1.35, 0.04]}
-                color="#d7cbb4"
-              />
-            </group>
-          )
-        })}
-        <Html
-          center
-          position={[0, 5.5, 0]}
-          zIndexRange={[5, 0]}
-          style={{ pointerEvents: 'none' }}
-        >
-          <span className="place-label">こもれび荘</span>
-        </Html>
-      </group>
       {homes
         .filter((home) => plots[home.plot]?.kind === 'apartment')
         .map((home) => {
@@ -450,56 +205,32 @@ function Street({
             </group>
           )
         })}
-      {Array.from({ length: 27 }, (_, i) => (
-        <Tree
-          key={`forest-${i}`}
-          x={18 + (i % 3) * 4 + (i % 2) * 0.5}
-          z={-23 + Math.floor(i / 3) * 5.3}
-          variant={i % 3}
-        />
-      ))}
-      {[-18, -12, -6, 6, 12, 18].map((z, i) => (
-        <Tree key={`bank-${z}`} x={7} z={z} variant={i % 3} />
-      ))}
-      {[-20, -16, -8].map((x, i) => (
-        <Tree key={`square-${x}`} x={x} z={15} variant={i} />
-      ))}
-      {[-15, -9].map((x) => (
-        <group key={`bench-${x}`} position={[x, 0, 12]}>
-          <Block
-            position={[0, 0.55, 0]}
-            size={[2.2, 0.18, 0.6]}
-            color="#9a795b"
-          />
-          <Block
-            position={[0, 1, -0.27]}
-            size={[2.2, 0.65, 0.12]}
-            color="#ae8b66"
-          />
-          {[-0.8, 0.8].map((leg) => (
-            <Block
-              key={leg}
-              position={[leg, 0.25, 0]}
-              size={[0.15, 0.5, 0.45]}
-              color="#65746a"
-            />
-          ))}
-        </group>
-      ))}
       <group ref={avatar} position={[0, 0, 18]}>
-        <mesh position={[0, 0.6, 0]} castShadow>
+        <mesh position={[0, 0.02, 0]} rotation-x={-Math.PI / 2}>
+          <circleGeometry args={[0.42, 20]} />
+          <meshBasicMaterial
+            color="#1d2a22"
+            transparent
+            opacity={0.28}
+            depthWrite={false}
+          />
+        </mesh>
+        <mesh position={[0, 0.6, 0]}>
           <capsuleGeometry args={[0.25, 0.45, 4, 8]} />
           <meshStandardMaterial color="#477f82" />
         </mesh>
-        <mesh position={[0, 1.2, 0]} castShadow>
+        <mesh position={[0, 1.2, 0]}>
           <sphereGeometry args={[0.24, 12, 12]} />
           <meshStandardMaterial color="#ebcfb0" />
         </mesh>
-        <mesh position={[0, 1.37, 0]} castShadow>
+        <mesh position={[0, 1.37, 0]}>
           <cylinderGeometry args={[0.25, 0.34, 0.15, 12]} />
           <meshStandardMaterial color="#d1b77c" />
         </mesh>
       </group>
+      {effects && looks[look].post && (
+        <TiltShift settings={looks[look].post!} focus={avatar} />
+      )}
     </>
   )
 }
@@ -527,6 +258,8 @@ export default function Town(props: Props) {
   const target = useRef<Position>({ x: 0, z: 18 })
   const [position, setPosition] = useState<Position>({ x: 0, z: 18 })
   const [ready, setReady] = useState(false)
+  const [look, setLook] = useState<LookId>(initialLook)
+  const [lowPower, setLowPower] = useState(false)
   return (
     <section
       className="town"
@@ -538,16 +271,50 @@ export default function Town(props: Props) {
       <CanvasBoundary>
         <Canvas
           shadows
-          dpr={[1, 1.5]}
+          dpr={lowPower ? 1 : [1, 1.5]}
           camera={{ position: [0, 13, 33], fov: 48, near: 0.1, far: 95 }}
           onCreated={() => setReady(true)}
           fallback={<p>このブラウザでは3D表示を利用できません。</p>}
         >
-          <Street {...props} target={target} setPosition={setPosition} />
+          <PerformanceMonitor onDecline={() => setLowPower(true)} />
+          <Street
+            {...props}
+            look={look}
+            effects={!lowPower}
+            target={target}
+            setPosition={setPosition}
+          />
         </Canvas>
       </CanvasBoundary>
       <div className="town-caption">
         <span className="dot" /> こもれびの街 <span>01</span>
+      </div>
+      <div
+        className="look-switcher"
+        role="radiogroup"
+        aria-label="街の見た目（試作）"
+      >
+        <span>見た目の試作</span>
+        {lookIds.map((id) => (
+          <button
+            key={id}
+            type="button"
+            role="radio"
+            aria-checked={id === look}
+            onClick={() => {
+              setLook(id)
+              rememberLook(id)
+            }}
+          >
+            {looks[id].label}
+          </button>
+        ))}
+        <small>
+          {looks[look].note}
+          {lowPower &&
+            looks[look].post &&
+            ' 描画が重いため、ぼかし効果は省略中です。'}
+        </small>
       </div>
       <div className="walk-controls">
         <button
