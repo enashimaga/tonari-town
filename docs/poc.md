@@ -37,7 +37,7 @@ Supabaseの既定のテーブル権限に依存せず、マイグレーション
 1. X開発者アカウントでこのアプリを登録する。
 2. SupabaseのAuthentication → Sign In / Providersで **X / Twitter (OAuth 2.0)** を選び、Callback URLを確認する。
 3. X側のユーザー認証設定でWeb Appを選び、Callback URLにSupabaseのURLを登録する。
-4. X側にWebサイト、利用規約、プライバシーポリシーのURLを登録する。利用規約は `/terms`、プライバシーポリシーは `/privacy` に実装済み。公開前に `【運営者名】`・`【お問い合わせ先】`・`【施行日】` を置き換え、実際の運用と法的内容を確認する。デプロイ後に各URLの直接表示・再読み込みを確認する。
+4. X側にWebサイト、利用規約、プライバシーポリシーのURLを登録する。利用規約は `/terms`、プライバシーポリシーは `/privacy` に実装済み。運営者は @Enashimaga3、お問い合わせ先は <a href="https://x.com/Enashimaga3" target="_blank" rel="noopener noreferrer">X (https://x.com/Enashimaga3)</a>、施行日は2026年11月22日。デプロイ後に各URLの直接表示・再読み込みを確認する。
 5. XのClient IDとClient SecretをSupabaseのプロバイダー設定に入れる。アプリの `.env.local` には入れない。
 6. SupabaseのURL ConfigurationにアプリのSite URLと、許可するRedirect URLを登録する。
 7. アプリで「Xでログイン」を押し、同意画面の権限を確認してログインする。

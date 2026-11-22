@@ -28,7 +28,7 @@ test('legal links navigate to Japanese pages with direct SPA access', async ({
     legalPage.getByRole('heading', { name: '利用規約', exact: true }),
   ).toBeVisible()
   await expect(legalPage.getByRole('main')).toContainText('日本法')
-  await expect(legalPage.getByRole('main')).toContainText('【お問い合わせ先】')
+  await expect(legalPage.getByRole('main')).toContainText('@Enashimaga3')
   await legalPage
     .getByRole('link', { name: 'プライバシーポリシー', exact: true })
     .click()
@@ -64,6 +64,18 @@ test('legal links navigate to Japanese pages with direct SPA access', async ({
       page.getByRole('heading', { name: title, exact: true }),
     ).toBeVisible()
     await expect(page.locator('canvas')).toHaveCount(0)
+    await expect(page.getByRole('main')).toContainText('施行日：2026年11月22日')
+    await expect(page.getByRole('main')).toContainText('運営者：@Enashimaga3')
+    const contacts = page.getByRole('link', {
+      name: 'X (https://x.com/Enashimaga3)',
+      exact: true,
+    })
+    await expect(contacts).toHaveCount(2)
+    for (const contact of await contacts.all()) {
+      await expect(contact).toHaveAttribute('href', 'https://x.com/Enashimaga3')
+      await expect(contact).toHaveAttribute('target', '_blank')
+      await expect(contact).toHaveAttribute('rel', 'noopener noreferrer')
+    }
     expect(
       await page.evaluate(
         () => document.documentElement.scrollWidth <= innerWidth,
