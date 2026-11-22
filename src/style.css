@@ -167,6 +167,8 @@ select {
 }
 .town-caption {
   position: absolute;
+  /* 3D内のラベルと吹き出し（drei Html の zIndexRange 上限10）より手前に置く */
+  z-index: 11;
   top: 18px;
   left: 18px;
   background: #fffdf3e8;
@@ -193,6 +195,7 @@ select {
 }
 .walk-controls {
   position: absolute;
+  z-index: 11;
   bottom: 18px;
   left: 50%;
   transform: translateX(-50%);
