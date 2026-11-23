@@ -42,7 +42,7 @@ export function Atmosphere({ night }: { night: boolean }) {
         color={sun}
         intensity={look.sun.intensity * (night ? 0.18 : 1)}
         castShadow
-        shadow-mapSize={[1024, 1024]}
+        shadow-mapSize={[2048, 2048]}
         shadow-camera-left={-38}
         shadow-camera-right={38}
         shadow-camera-top={38}
@@ -54,9 +54,10 @@ export function Atmosphere({ night }: { night: boolean }) {
   )
 }
 
-// Single pass: a 16-tap golden-angle disc blur whose radius grows away from the
+// Single pass: an 8-tap golden-angle disc blur whose radius grows away from the
 // walker's screen row, plus saturation and vignette, so the tilt-shift look adds
-// only one full-screen pass before the tone-mapping OutputPass.
+// only one full-screen pass before the tone-mapping OutputPass. The target has
+// no MSAA: 4x samples doubled the pass's cost and the blur hides most edges.
 const tiltShiftShader = {
   uniforms: {
     tDiffuse: { value: null },
@@ -89,13 +90,13 @@ const tiltShiftShader = {
       float radius = blur * smoothstep(0.0, 0.45, distanceFromFocus);
       if (radius > 0.4) {
         vec3 sum = color.rgb;
-        for (int i = 0; i < 16; i++) {
+        for (int i = 0; i < 8; i++) {
           float index = float(i) + 0.5;
           float angle = index * 2.39996;
-          vec2 offset = vec2(cos(angle), sin(angle)) * sqrt(index / 16.0) * radius;
+          vec2 offset = vec2(cos(angle), sin(angle)) * sqrt(index / 8.0) * radius;
           sum += texture2D(tDiffuse, vUv + offset / resolution).rgb;
         }
-        color.rgb = sum / 17.0;
+        color.rgb = sum / 9.0;
       }
       float luminance = dot(color.rgb, vec3(0.2126, 0.7152, 0.0722));
       color.rgb = mix(vec3(luminance), color.rgb, saturation);
@@ -111,9 +112,7 @@ const projected = new Vector3()
 export function TiltShift({ focus }: { focus: RefObject<Object3D | null> }) {
   const { gl, scene, camera, size, viewport } = useThree()
   const { composer, pass } = useMemo(() => {
-    const target = new WebGLRenderTarget(1, 1, {
-      samples: 4,
-    })
+    const target = new WebGLRenderTarget(1, 1)
     const composer = new EffectComposer(gl, target)
     composer.addPass(new RenderPass(scene, camera))
     const pass = new ShaderPass(tiltShiftShader)

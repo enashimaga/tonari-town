@@ -288,7 +288,8 @@ class CanvasBoundary extends Component<
   }
 }
 
-// 2: full look, 1: DPR 1, 0: no blur or shadows. Fixed bounds because drei's
+// 2: full look, 1: DPR 1, 0: no blur or shadows. Shadows use one hard tap
+// ('basic'); the static 2048 map keeps their edges clean. Fixed bounds because drei's
 // default derives them from the highest fps it has seen, so a brief spike over
 // 100 fps makes it treat anything under 60 fps as too slow. drei counts both
 // ends of each 250 ms window, reading about 4 fps high, so 34 means 30.
@@ -313,7 +314,7 @@ export default function Town(props: Props) {
     >
       <CanvasBoundary>
         <Canvas
-          shadows={quality > 0}
+          shadows={quality > 0 ? 'basic' : false}
           dpr={quality === 2 ? [1, 1.25] : 1}
           camera={{ position: [0, 13, 33], fov: 48, near: 0.1, far: 95 }}
           onCreated={() => setReady(true)}

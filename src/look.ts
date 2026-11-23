@@ -39,7 +39,7 @@ export const look: Look = {
   exposure: 1.05,
   sun: { color: '#fff0d4', intensity: 3.4, position: [-14, 20, 16] },
   hemisphere: { sky: '#dfeaff', ground: '#8b7b5d', intensity: 1.5 },
-  post: { blur: 12, band: 0.1, vignette: 0.45, saturation: 1.22 },
+  post: { blur: 7, band: 0.1, vignette: 0.45, saturation: 1.22 },
   palette: {
     walls: ['#ebdfc9', '#d6caae', '#cbd3bf', '#e5ccb2'],
     roofs: ['#8f5b44', '#5e6c71', '#7c6b50', '#6f805d'],
