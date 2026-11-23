@@ -175,6 +175,47 @@ test('legal links navigate to Japanese pages with direct SPA access', async ({
   expect(errors).toEqual([])
 })
 
+test('reads a full length line in a short landscape viewport', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 667, height: 320 })
+  const ending = 'ここが最後のひとこと。'
+  const line =
+    '窓の外から聞こえる風と夕暮れ。'.repeat(12).slice(0, 160 - ending.length) +
+    ending
+  await page.goto('/')
+  await enterTown(page)
+  await openHomeEditor(page)
+  await page.getByLabel('1. 台詞のJSONを貼り付ける').fill(
+    JSON.stringify({
+      ...example,
+      partnerName: '横向きテスト',
+      lines: [{ scene: 'anytime', text: line }],
+    }),
+  )
+  await page.getByRole('button', { name: '台詞を確認する' }).click()
+  await page.getByRole('button', { name: 'このブラウザに家を保存' }).click()
+  await expect(homeEditor(page).getByRole('status')).toContainText(
+    'このブラウザに保存',
+  )
+  await homeEditor(page).getByRole('button', { name: '閉じる' }).click()
+
+  const bubble = page.locator('.bubble').filter({ hasText: '横向きテスト' })
+  await expect(bubble).toBeInViewport({ ratio: 1 })
+  const read = bubble.getByRole('button', { name: '全文を読む' })
+  if (test.info().project.use.hasTouch) await read.tap()
+  else await read.click()
+  const reader = page.getByRole('dialog', { name: '台詞' })
+  await expect(reader.getByText(line, { exact: true })).toBeInViewport({
+    ratio: 1,
+  })
+  await page.screenshot({
+    path: `test-results/${test.info().project.name}-landscape-line.png`,
+  })
+  await reader.getByRole('button', { name: '閉じる' }).click()
+  await expect(read).toBeFocused()
+})
+
 test('renders 3D, walks, validates JSON, saves locally, and reloads', async ({
   page,
 }) => {

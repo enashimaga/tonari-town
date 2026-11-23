@@ -254,8 +254,13 @@ select {
 .game-dialog::backdrop {
   background: #18282180;
 }
-.controls-guide {
+.controls-guide,
+.line-reader {
   max-width: 460px;
+}
+.line-reader p {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 .controls-guide dl {
   margin: 16px 0 8px;
@@ -392,6 +397,9 @@ select {
   font-size: 12px;
   margin: 4px 0 0;
   line-height: 1.8;
+}
+.bubble-more {
+  display: none;
 }
 .muted {
   font-size: 12px;
@@ -575,5 +583,22 @@ textarea {
     grid-template-columns: repeat(4, 36px);
     gap: 4px;
     padding-inline: 8px;
+  }
+}
+@media (max-height: 480px) {
+  .bubble > small,
+  .bubble > p {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .bubble-more {
+    display: inline-block;
+    pointer-events: auto;
+    min-height: 30px;
+    margin-top: 4px;
+    padding: 2px 8px;
+    font-size: 11px;
   }
 }

@@ -68,9 +68,11 @@ export default function App() {
   const [enteredTown, setEnteredTown] = useState(false)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [mapNotice, setMapNotice] = useState('')
+  const [reading, setReading] = useState({ speaker: '', line: '' })
   const townMap = useRef<HTMLElement>(null)
   const guide = useRef<HTMLDialogElement>(null)
   const editor = useRef<HTMLDialogElement>(null)
+  const reader = useRef<HTMLDialogElement>(null)
   const requestVersion = useRef(0)
   const currentIdentity = useRef<string | null | undefined>(undefined)
 
@@ -337,6 +339,10 @@ export default function App() {
           homes={visibleHomes}
           hour={hour}
           selectedPlot={plot}
+          onReadLine={(speaker, line) => {
+            setReading({ speaker, line })
+            openDialog(reader.current)
+          }}
           hiddenOwners={
             new Set(
               [...hiddenOwners].filter(
@@ -421,6 +427,23 @@ export default function App() {
           </dd>
         </dl>
         <LegalLinks newTab />
+      </dialog>
+
+      <dialog
+        id="line-reader"
+        className="game-dialog line-reader"
+        ref={reader}
+        aria-labelledby="line-reader-title"
+        onClose={() => setDialogOpen(false)}
+      >
+        <div className="dialog-heading">
+          <h2 id="line-reader-title">台詞</h2>
+          <button type="button" onClick={() => reader.current?.close()}>
+            閉じる
+          </button>
+        </div>
+        <p className="eyebrow">{reading.speaker}</p>
+        <p>{reading.line}</p>
       </dialog>
 
       <dialog

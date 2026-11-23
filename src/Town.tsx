@@ -28,10 +28,12 @@ type Props = {
   hour: number
   selectedPlot: number
   onSelectPlot: (plot: number) => void
+  onReadLine: (speaker: string, line: string) => void
   hiddenOwners: ReadonlySet<string>
 }
 const colors = ['#dfbba1', '#b1c2ad', '#e4d2a6', '#adc2ca']
 const projectedLabel = new Vector3()
+const compactBubbleHeight = 480
 
 function bubblePosition(
   object: Object3D,
@@ -39,12 +41,16 @@ function bubblePosition(
   size: { width: number; height: number },
 ): [number, number] {
   object.getWorldPosition(projectedLabel).project(camera)
+  const y = (-projectedLabel.y * 0.5 + 0.5) * size.height
+  const compactTop = Math.min(110, size.height / 2)
   return [
     Math.max(
       105,
       Math.min(size.width - 105, (projectedLabel.x * 0.5 + 0.5) * size.width),
     ),
-    (-projectedLabel.y * 0.5 + 0.5) * size.height,
+    size.height <= compactBubbleHeight
+      ? Math.max(compactTop, Math.min(size.height - 142, y))
+      : y,
   ]
 }
 
@@ -266,8 +272,9 @@ function Speech({
   homes,
   hour,
   hiddenOwners,
+  onReadLine,
   position,
-}: Pick<Props, 'homes' | 'hour' | 'hiddenOwners'> & {
+}: Pick<Props, 'homes' | 'hour' | 'hiddenOwners' | 'onReadLine'> & {
   position: RefObject<Position>
 }) {
   const [visible, setVisible] = useState('')
@@ -312,8 +319,11 @@ function Speech({
       setVisible(next)
     }
   })
-  return labels.map(({ home, x, y, z }, index) =>
-    visible[index] === '1' ? (
+  return labels.map(({ home, x, y, z }, index) => {
+    if (visible[index] !== '1') return null
+    const { partner } = home
+    const line = pickLine(partner, hour, tick)
+    return (
       <Html
         key={home.owner_id}
         center
@@ -323,12 +333,25 @@ function Speech({
         style={{ pointerEvents: 'none' }}
       >
         <div className="bubble">
-          <small>{home.partner.partnerName}</small>
-          <p>{pickLine(home.partner, hour, tick)}</p>
+          <small>{partner.partnerName}</small>
+          <p>{line}</p>
+          <button
+            type="button"
+            className="bubble-more"
+            aria-haspopup="dialog"
+            aria-controls="line-reader"
+            onClick={(event) => {
+              event.stopPropagation()
+              event.currentTarget.focus()
+              onReadLine(partner.partnerName, line)
+            }}
+          >
+            全文を読む
+          </button>
         </div>
       </Html>
-    ) : null,
-  )
+    )
+  })
 }
 
 const Street = memo(function Street({
@@ -654,6 +677,7 @@ export default function Town(props: Props) {
             homes={props.homes}
             hour={props.hour}
             hiddenOwners={props.hiddenOwners}
+            onReadLine={props.onReadLine}
             position={position}
           />
         </Canvas>
