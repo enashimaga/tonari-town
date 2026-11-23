@@ -21,7 +21,7 @@ import {
   type InstancedMesh,
   type Material,
 } from 'three'
-import { looks, type LookId } from '../looks'
+import { look } from '../look'
 import { apartment, plots, type Home, type Position } from '../world'
 import {
   box,
@@ -173,13 +173,13 @@ function compose(
   )
 }
 
-function Trees({ look, materials }: { look: LookId; materials: Materials }) {
+function Trees({ materials }: { materials: Materials }) {
   const geometry = shared()
   const trunks = useRef<InstancedMesh>(null)
   const canopies = useRef<InstancedMesh>(null)
   const { trunkInstances, canopyInstances } = useMemo(() => {
     const next = seeded(11)
-    const leaves = looks[look].palette.leaves
+    const leaves = look.palette.leaves
     const trunkColor = new Color('#ffffff')
     const trunkInstances: Instance[] = []
     const canopyInstances: Instance[] = []
@@ -216,7 +216,7 @@ function Trees({ look, materials }: { look: LookId; materials: Materials }) {
       })
     })
     return { trunkInstances, canopyInstances }
-  }, [look])
+  }, [])
   useInstances(trunks, trunkInstances)
   useInstances(canopies, canopyInstances)
   return (
@@ -241,14 +241,14 @@ function Trees({ look, materials }: { look: LookId; materials: Materials }) {
 
 const flowerColors = ['#fff6e8', '#f4a7b9', '#f6d55c', '#b9a3e3', '#ef8a5b']
 
-function Scatter({ look, materials }: { look: LookId; materials: Materials }) {
+function Scatter({ materials }: { materials: Materials }) {
   const geometry = shared()
   const tufts = useRef<InstancedMesh>(null)
   const flowers = useRef<InstancedMesh>(null)
   const rocks = useRef<InstancedMesh>(null)
   const layout = useMemo(() => {
     const next = seeded(29)
-    const grass = new Color(looks[look].palette.grass)
+    const grass = new Color(look.palette.grass)
     const tuftInstances: Instance[] = []
     while (tuftInstances.length < 420) {
       const x = -28 + next() * 60
@@ -281,7 +281,7 @@ function Scatter({ look, materials }: { look: LookId; materials: Materials }) {
         })
       }
     }
-    const stone = new Color(looks[look].palette.stone)
+    const stone = new Color(look.palette.stone)
     const rockInstances: Instance[] = []
     for (let i = 0; i < 60; i++) {
       const x = i % 2 ? 9.45 : 14.55
@@ -298,7 +298,7 @@ function Scatter({ look, materials }: { look: LookId; materials: Materials }) {
       })
     }
     return { tuftInstances, flowerInstances, rockInstances }
-  }, [look])
+  }, [])
   useInstances(tufts, layout.tuftInstances)
   useInstances(flowers, layout.flowerInstances)
   useInstances(rocks, layout.rockInstances)
@@ -345,7 +345,6 @@ function Plinth({ materials }: { materials: Materials }) {
 }
 
 type SceneryProps = {
-  look: LookId
   night: boolean
   homes: Home[]
   selectedPlot: number
@@ -354,7 +353,6 @@ type SceneryProps = {
 }
 
 export const Scenery = memo(function Scenery({
-  look,
   night,
   homes,
   selectedPlot,
@@ -362,10 +360,7 @@ export const Scenery = memo(function Scenery({
   target,
 }: SceneryProps) {
   const geometry = shared()
-  const materials = useMemo(
-    () => createMaterials(looks[look], night),
-    [look, night],
-  )
+  const materials = useMemo(() => createMaterials(look, night), [night])
   useEffect(() => () => disposeMaterials(materials), [materials])
   const gl = useThree((state) => state.gl)
   // Only the avatar moves, and it uses a blob shadow, so the shadow map is
@@ -373,7 +368,7 @@ export const Scenery = memo(function Scenery({
   useLayoutEffect(() => {
     gl.shadowMap.autoUpdate = false
     gl.shadowMap.needsUpdate = true
-  }, [gl, look, night, homes, selectedPlot])
+  }, [gl, night, homes, selectedPlot])
   useEffect(
     () => () => {
       gl.shadowMap.autoUpdate = true
@@ -405,9 +400,9 @@ export const Scenery = memo(function Scenery({
         />
       </group>
       <Merged geometries={geometry.props} materials={materials} />
-      <Trees look={look} materials={materials} />
-      <Scatter look={look} materials={materials} />
-      {looks[look].plinth && <Plinth materials={materials} />}
+      <Trees materials={materials} />
+      <Scatter materials={materials} />
+      <Plinth materials={materials} />
       {plots
         .filter((plot) => plot.kind === 'house')
         .map((plot, index) => {

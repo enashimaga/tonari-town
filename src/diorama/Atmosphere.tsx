@@ -11,20 +11,20 @@ import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js'
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js'
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js'
 import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js'
-import type { Look } from '../looks'
+import { look } from '../look'
 
 const nightSky = new Color('#1c2333')
 
-export function Atmosphere({ look, night }: { look: Look; night: boolean }) {
+export function Atmosphere({ night }: { night: boolean }) {
   const gl = useThree((state) => state.gl)
   const background = useMemo(
     () =>
       new Color(look.background).lerp(nightSky, night ? 0.75 : 0).getStyle(),
-    [look, night],
+    [night],
   )
   useEffect(() => {
     gl.toneMappingExposure = look.exposure
-  }, [gl, look])
+  }, [gl])
   const sun = night ? '#9fb2ff' : look.sun.color
   return (
     <>
@@ -108,13 +108,7 @@ const tiltShiftShader = {
 
 const projected = new Vector3()
 
-export function TiltShift({
-  settings,
-  focus,
-}: {
-  settings: NonNullable<Look['post']>
-  focus: RefObject<Object3D | null>
-}) {
+export function TiltShift({ focus }: { focus: RefObject<Object3D | null> }) {
   const { gl, scene, camera, size, viewport } = useThree()
   const { composer, pass } = useMemo(() => {
     const target = new WebGLRenderTarget(1, 1, {
@@ -143,11 +137,11 @@ export function TiltShift({
     )
   }, [composer, pass, size, viewport.dpr])
   useEffect(() => {
-    pass.uniforms.band.value = settings.band
-    pass.uniforms.blur.value = settings.blur * viewport.dpr
-    pass.uniforms.vignette.value = settings.vignette
-    pass.uniforms.saturation.value = settings.saturation
-  }, [pass, settings, viewport.dpr])
+    pass.uniforms.band.value = look.post.band
+    pass.uniforms.blur.value = look.post.blur * viewport.dpr
+    pass.uniforms.vignette.value = look.post.vignette
+    pass.uniforms.saturation.value = look.post.saturation
+  }, [pass, viewport.dpr])
   useFrame(() => {
     if (focus.current) {
       focus.current.getWorldPosition(projected).project(camera)

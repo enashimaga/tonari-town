@@ -13,7 +13,6 @@ import {
 import { Group, Vector3, type Camera, type Object3D } from 'three'
 import { Atmosphere, TiltShift } from './diorama/Atmosphere'
 import { Scenery } from './diorama/Scenery'
-import { initialLook, lookIds, looks, rememberLook, type LookId } from './looks'
 import { currentScene, pickLine } from './partner'
 import { apartment, plots, moveToward, type Home, type Position } from './world'
 
@@ -247,30 +246,25 @@ const Street = memo(function Street({
   selectedPlot,
   onSelectPlot,
   target,
-  look,
   effects,
   avatar,
 }: Pick<Props, 'homes' | 'hour' | 'selectedPlot' | 'onSelectPlot'> & {
   target: RefObject<Position>
-  look: LookId
   effects: boolean
   avatar: RefObject<Group | null>
 }) {
   const night = currentScene(hour) === 'night'
   return (
     <>
-      <Atmosphere look={looks[look]} night={night} />
+      <Atmosphere night={night} />
       <Scenery
-        look={look}
         night={night}
         homes={homes}
         selectedPlot={selectedPlot}
         onSelectPlot={onSelectPlot}
         target={target}
       />
-      {effects && looks[look].post && (
-        <TiltShift settings={looks[look].post!} focus={avatar} />
-      )}
+      {effects && <TiltShift focus={avatar} />}
     </>
   )
 })
@@ -300,7 +294,6 @@ export default function Town(props: Props) {
   const diagnostics = useRef<HTMLElement>(null)
   const avatar = useRef<Group>(null)
   const [ready, setReady] = useState(false)
-  const [look, setLook] = useState<LookId>(initialLook)
   const [lowPower, setLowPower] = useState(false)
   return (
     <section
@@ -326,7 +319,6 @@ export default function Town(props: Props) {
             selectedPlot={props.selectedPlot}
             onSelectPlot={props.onSelectPlot}
             target={target}
-            look={look}
             effects={!lowPower}
             avatar={avatar}
           />
@@ -347,35 +339,6 @@ export default function Town(props: Props) {
       </CanvasBoundary>
       <div className="town-caption">
         <span className="dot" /> こもれびの街 <span>01</span>
-      </div>
-      <div
-        className="look-switcher"
-        role="radiogroup"
-        aria-label="街の見た目（試作）"
-      >
-        <span>見た目の試作</span>
-        {lookIds.map((id) => (
-          <button
-            key={id}
-            type="button"
-            role="radio"
-            aria-checked={id === look}
-            onClick={(event) => {
-              setLook(id)
-              rememberLook(id)
-              // A focused button swallows WASD, so mouse picks hand focus back to the town.
-              if (event.detail > 0) event.currentTarget.blur()
-            }}
-          >
-            {looks[id].label}
-          </button>
-        ))}
-        <small>
-          {looks[look].note}
-          {lowPower &&
-            looks[look].post &&
-            ' 描画が重いため、ぼかし効果は省略中です。'}
-        </small>
       </div>
       <div className="walk-controls">
         <button
