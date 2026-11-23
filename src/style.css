@@ -262,6 +262,10 @@ select {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
+.line-reader h3 {
+  margin-bottom: 4px;
+  overflow-wrap: anywhere;
+}
 .controls-guide dl {
   margin: 16px 0 8px;
 }
@@ -290,7 +294,8 @@ select {
 .dialog-heading button {
   flex-shrink: 0;
 }
-.editor .dialog-heading {
+.editor .dialog-heading,
+.line-reader .dialog-heading {
   position: sticky;
   z-index: 1;
   top: 0;
@@ -398,7 +403,7 @@ select {
   margin: 4px 0 0;
   line-height: 1.8;
 }
-.bubble-more {
+.nearby-lines {
   display: none;
 }
 .muted {
@@ -586,19 +591,17 @@ textarea {
   }
 }
 @media (max-height: 480px) {
-  .bubble > small,
-  .bubble > p {
-    display: block;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+  .bubble {
+    display: none;
   }
-  .bubble-more {
-    display: inline-block;
-    pointer-events: auto;
-    min-height: 30px;
-    margin-top: 4px;
-    padding: 2px 8px;
-    font-size: 11px;
+  .nearby-lines {
+    position: absolute;
+    z-index: 11;
+    top: calc(var(--hud-top) + 92px);
+    left: var(--hud-left);
+    display: block;
+    min-height: 44px;
+    background: #fffdf5;
+    font-size: 13px;
   }
 }

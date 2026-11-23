@@ -200,15 +200,14 @@ test('reads a full length line in a short landscape viewport', async ({
   )
   await homeEditor(page).getByRole('button', { name: '閉じる' }).click()
 
-  const bubble = page.locator('.bubble').filter({ hasText: '横向きテスト' })
-  await expect(bubble).toBeInViewport({ ratio: 1 })
-  const read = bubble.getByRole('button', { name: '全文を読む' })
+  const read = page.getByRole('button', { name: '近くの台詞' })
+  await expect(read).toBeInViewport({ ratio: 1 })
   if (test.info().project.use.hasTouch) await read.tap()
   else await read.click()
-  const reader = page.getByRole('dialog', { name: '台詞' })
-  await expect(reader.getByText(line, { exact: true })).toBeInViewport({
-    ratio: 1,
-  })
+  const reader = page.getByRole('dialog', { name: '近くの台詞' })
+  const fullText = reader.getByText(line, { exact: true })
+  await fullText.evaluate((text) => text.scrollIntoView({ block: 'center' }))
+  await expect(fullText).toBeInViewport({ ratio: 1 })
   await page.screenshot({
     path: `test-results/${test.info().project.name}-landscape-line.png`,
   })

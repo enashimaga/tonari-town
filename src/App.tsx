@@ -10,6 +10,7 @@ import {
   deleteHome,
 } from './backend'
 import { example, parsePartner, type Partner } from './partner'
+import type { NearbyLine } from './Town'
 import { demoHomes, demoOwner, plots, type Home } from './world'
 import {
   hiddenHomesKey,
@@ -68,7 +69,7 @@ export default function App() {
   const [enteredTown, setEnteredTown] = useState(false)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [mapNotice, setMapNotice] = useState('')
-  const [reading, setReading] = useState({ speaker: '', line: '' })
+  const [reading, setReading] = useState<NearbyLine[]>([])
   const townMap = useRef<HTMLElement>(null)
   const guide = useRef<HTMLDialogElement>(null)
   const editor = useRef<HTMLDialogElement>(null)
@@ -339,9 +340,10 @@ export default function App() {
           homes={visibleHomes}
           hour={hour}
           selectedPlot={plot}
-          onReadLine={(speaker, line) => {
-            setReading({ speaker, line })
+          onReadLines={(lines) => {
+            setReading(lines)
             openDialog(reader.current)
+            if (reader.current) reader.current.scrollTop = 0
           }}
           hiddenOwners={
             new Set(
@@ -437,13 +439,18 @@ export default function App() {
         onClose={() => setDialogOpen(false)}
       >
         <div className="dialog-heading">
-          <h2 id="line-reader-title">台詞</h2>
+          <h2 id="line-reader-title">近くの台詞</h2>
           <button type="button" onClick={() => reader.current?.close()}>
             閉じる
           </button>
         </div>
-        <p className="eyebrow">{reading.speaker}</p>
-        <p>{reading.line}</p>
+        {reading.map(({ plot, speaker, text }) => (
+          <article key={plot}>
+            <h3>{speaker}</h3>
+            <span className="eyebrow">{plots[plot].label}</span>
+            <p>{text}</p>
+          </article>
+        ))}
       </dialog>
 
       <dialog

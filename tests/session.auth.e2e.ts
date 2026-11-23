@@ -115,3 +115,61 @@ for (const expired of [false, true]) {
     ).toBeNull()
   })
 }
+
+test.describe('short landscape dialogue', () => {
+  test.use({ viewport: { width: 667, height: 320 }, hasTouch: true })
+
+  test('reads both floors from one touch control', async ({ page }) => {
+    const residents = [
+      { name: '一階の住人', plot: 13, line: '一階の窓から、おかえり。' },
+      { name: '二階の住人', plot: 16, line: '二階の窓から、また明日。' },
+    ]
+    await page.route(
+      'https://session-test.supabase.co/rest/v1/homes?**',
+      (route) =>
+        route.fulfill({
+          json: residents.map(({ name, plot, line }) => ({
+            owner_id: `test-resident-${plot}`,
+            district: 0,
+            plot,
+            partner: {
+              version: 1,
+              partnerName: name,
+              lines: [{ scene: 'anytime', text: line }],
+            },
+            published: true,
+          })),
+        }),
+    )
+    await page.goto('/')
+    await page.getByRole('button', { name: '散歩する' }).tap()
+    const town = page.getByRole('region', { name: '散歩できる3Dの街' })
+    const read = page.getByRole('button', { name: '近くの台詞' })
+    await expect(town).toHaveAttribute('data-ready', 'true')
+    await expect(read).toBeHidden()
+
+    const left = page.getByRole('button', { name: '左へ歩く' })
+    const north = page.getByRole('button', { name: '奥へ歩く' })
+    for (const x of ['-6.0', '-12.0']) {
+      await left.tap()
+      await expect(town).toHaveAttribute('data-position-x', x)
+    }
+    for (const z of ['12.0', '6.0', '0.0']) {
+      await north.tap()
+      await expect(town).toHaveAttribute('data-position', z)
+    }
+
+    await expect(read).toHaveCount(1)
+    await read.tap()
+    const reader = page.getByRole('dialog', { name: '近くの台詞' })
+    for (const [index, { name, line }] of residents.entries()) {
+      const article = reader.getByRole('article').filter({ hasText: name })
+      await expect(article).toContainText(`こもれび荘 ${index + 1}02号室`)
+      const text = article.getByText(line, { exact: true })
+      await text.evaluate((line) => line.scrollIntoView({ block: 'center' }))
+      await expect(text).toBeInViewport({ ratio: 1 })
+    }
+    await reader.getByRole('button', { name: '閉じる' }).tap()
+    await expect(read).toBeFocused()
+  })
+})

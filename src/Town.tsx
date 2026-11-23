@@ -22,18 +22,19 @@ import {
 import { pickLine } from './partner'
 import { apartment, plots, moveToward, type Home, type Position } from './world'
 
+export type NearbyLine = { plot: number; speaker: string; text: string }
+
 type Props = {
   homes: Home[]
   inputPaused: boolean
   hour: number
   selectedPlot: number
   onSelectPlot: (plot: number) => void
-  onReadLine: (speaker: string, line: string) => void
+  onReadLines: (lines: NearbyLine[]) => void
   hiddenOwners: ReadonlySet<string>
 }
 const colors = ['#dfbba1', '#b1c2ad', '#e4d2a6', '#adc2ca']
 const projectedLabel = new Vector3()
-const compactBubbleHeight = 480
 
 function bubblePosition(
   object: Object3D,
@@ -41,16 +42,12 @@ function bubblePosition(
   size: { width: number; height: number },
 ): [number, number] {
   object.getWorldPosition(projectedLabel).project(camera)
-  const y = (-projectedLabel.y * 0.5 + 0.5) * size.height
-  const compactTop = Math.min(110, size.height / 2)
   return [
     Math.max(
       105,
       Math.min(size.width - 105, (projectedLabel.x * 0.5 + 0.5) * size.width),
     ),
-    size.height <= compactBubbleHeight
-      ? Math.max(compactTop, Math.min(size.height - 142, y))
-      : y,
+    (-projectedLabel.y * 0.5 + 0.5) * size.height,
   ]
 }
 
@@ -272,13 +269,14 @@ function Speech({
   homes,
   hour,
   hiddenOwners,
-  onReadLine,
+  onNearbyLines,
   position,
-}: Pick<Props, 'homes' | 'hour' | 'hiddenOwners' | 'onReadLine'> & {
+}: Pick<Props, 'homes' | 'hour' | 'hiddenOwners'> & {
+  onNearbyLines: (lines: NearbyLine[]) => void
   position: RefObject<Position>
 }) {
-  const [visible, setVisible] = useState('')
-  const previous = useRef('')
+  const [visible, setVisible] = useState<string[]>([])
+  const previous = useRef(visible)
   const [tick, setTick] = useState(0)
   const elapsed = useRef(0.15)
   const labels = useMemo(
@@ -308,50 +306,51 @@ function Speech({
     if (elapsed.current <= 0.15) return
     elapsed.current = 0
     const next = labels
-      .map(({ x, z }) =>
-        Math.hypot(x - position.current.x, z - position.current.z) <= 6
-          ? '1'
-          : '0',
+      .filter(
+        ({ x, z }) =>
+          Math.hypot(x - position.current.x, z - position.current.z) <= 6,
       )
-      .join('')
-    if (next !== previous.current) {
+      .map(({ home }) => home.owner_id)
+    if (
+      next.length !== previous.current.length ||
+      next.some((id, i) => id !== previous.current[i])
+    ) {
       previous.current = next
       setVisible(next)
     }
   })
-  return labels.map(({ home, x, y, z }, index) => {
-    if (visible[index] !== '1') return null
-    const { partner } = home
-    const line = pickLine(partner, hour, tick)
-    return (
-      <Html
-        key={home.owner_id}
-        center
-        position={[x, y, z]}
-        calculatePosition={bubblePosition}
-        zIndexRange={[10, 0]}
-        style={{ pointerEvents: 'none' }}
-      >
-        <div className="bubble">
-          <small>{partner.partnerName}</small>
-          <p>{line}</p>
-          <button
-            type="button"
-            className="bubble-more"
-            aria-haspopup="dialog"
-            aria-controls="line-reader"
-            onClick={(event) => {
-              event.stopPropagation()
-              event.currentTarget.focus()
-              onReadLine(partner.partnerName, line)
-            }}
-          >
-            全文を読む
-          </button>
-        </div>
-      </Html>
-    )
-  })
+  const nearby = useMemo(
+    () =>
+      labels
+        .filter(({ home }) => visible.includes(home.owner_id))
+        .map(({ home, ...position }) => ({
+          ...position,
+          id: home.owner_id,
+          plot: home.plot,
+          speaker: home.partner.partnerName,
+          text: pickLine(home.partner, hour, tick),
+        })),
+    [labels, visible, hour, tick],
+  )
+  useEffect(() => {
+    onNearbyLines(nearby)
+  }, [nearby, onNearbyLines])
+
+  return nearby.map(({ id, x, y, z, speaker, text }) => (
+    <Html
+      key={id}
+      center
+      position={[x, y, z]}
+      calculatePosition={bubblePosition}
+      zIndexRange={[10, 0]}
+      style={{ pointerEvents: 'none' }}
+    >
+      <div className="bubble">
+        <small>{speaker}</small>
+        <p>{text}</p>
+      </div>
+    </Html>
+  ))
 }
 
 const Street = memo(function Street({
@@ -643,6 +642,7 @@ export default function Town(props: Props) {
   const position = useRef<Position>({ x: 0, z: 18 })
   const diagnostics = useRef<HTMLElement>(null)
   const [ready, setReady] = useState(false)
+  const [nearby, setNearby] = useState<NearbyLine[]>([])
   return (
     <section
       ref={diagnostics}
@@ -677,7 +677,7 @@ export default function Town(props: Props) {
             homes={props.homes}
             hour={props.hour}
             hiddenOwners={props.hiddenOwners}
-            onReadLine={props.onReadLine}
+            onNearbyLines={setNearby}
             position={position}
           />
         </Canvas>
@@ -685,6 +685,20 @@ export default function Town(props: Props) {
       <div className="town-caption">
         <span className="dot" /> こもれびの街 <span>01</span>
       </div>
+      {nearby.length > 0 && (
+        <button
+          type="button"
+          className="nearby-lines"
+          aria-haspopup="dialog"
+          aria-controls="line-reader"
+          onClick={(event) => {
+            event.currentTarget.focus()
+            props.onReadLines(nearby)
+          }}
+        >
+          近くの台詞
+        </button>
+      )}
       <div className="walk-controls">
         <button
           type="button"
