@@ -290,9 +290,10 @@ class CanvasBoundary extends Component<
 
 // 2: full look, 1: DPR 1, 0: no blur or shadows. Fixed bounds because drei's
 // default derives them from the highest fps it has seen, so a brief spike over
-// 100 fps makes it treat anything under 60 fps as too slow.
+// 100 fps makes it treat anything under 60 fps as too slow. drei counts both
+// ends of each 250 ms window, reading about 4 fps high, so 34 means 30.
 type Quality = 0 | 1 | 2
-const qualityBounds = () => [30, 50] as [number, number]
+const qualityBounds = () => [34, 54] as [number, number]
 
 export default function Town(props: Props) {
   const target = useRef<Position>({ x: 0, z: 18 })
