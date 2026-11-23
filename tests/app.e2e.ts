@@ -1,6 +1,91 @@
-import { expect, test } from '@playwright/test'
+import { expect, test, type Page } from '@playwright/test'
 import { PerspectiveCamera, Vector3 } from 'three'
 import { example } from '../src/partner'
+
+async function enterTown(page: Page) {
+  const enter = page.getByRole('button', { name: '散歩する' })
+  if (test.info().project.use.hasTouch) await enter.tap()
+  else await enter.click()
+}
+
+function openHomeEditor(page: Page) {
+  return page.getByRole('button', { name: /住む場所を決める/ }).click()
+}
+
+function homeEditor(page: Page) {
+  return page.getByRole('dialog', { name: 'この街で、暮らす準備。' })
+}
+
+test('opens the viewport-sized town with a housing task and help popup', async ({
+  page,
+}) => {
+  await page.goto('/')
+  await expect(
+    page.getByRole('heading', { name: /となりの日常を、/ }),
+  ).toBeVisible()
+  await expect(page.getByText(/このブラウザーにだけ保存/)).toBeVisible()
+  await expect(page.locator('canvas')).toHaveCount(0)
+  await page.screenshot({
+    path: `test-results/${test.info().project.name}-overview.png`,
+  })
+  await enterTown(page)
+  await expect(page.locator('#town-map')).toBeFocused()
+
+  const town = page.getByRole('region', { name: '散歩できる3Dの街' })
+  await expect(town).toHaveAttribute('data-ready', 'true')
+  const viewport = await page.evaluate(() => ({
+    x: 0,
+    y: 0,
+    width: innerWidth,
+    height: innerHeight,
+  }))
+  expect(await town.boundingBox()).toEqual(viewport)
+  const help = page.getByRole('button', { name: '操作ガイド' })
+  const task = page.getByRole('button', { name: /住む場所を決める/ })
+  const helpBox = (await help.boundingBox())!
+  const taskBox = (await task.boundingBox())!
+  const arrowsBox = (await page.locator('.walk-controls').boundingBox())!
+  expect(helpBox.x).toBeGreaterThanOrEqual(arrowsBox.x + arrowsBox.width)
+  expect(viewport.width - (helpBox.x + helpBox.width)).toBeLessThanOrEqual(24)
+  expect(viewport.height - (helpBox.y + helpBox.height)).toBeLessThanOrEqual(24)
+  expect(viewport.width - (taskBox.x + taskBox.width)).toBeLessThanOrEqual(24)
+  expect(taskBox.y).toBeLessThanOrEqual(24)
+  await page.screenshot({
+    path: `test-results/${test.info().project.name}-game-hud.png`,
+  })
+
+  if (test.info().project.use.hasTouch) await help.tap()
+  else await help.click()
+  const guide = page.getByRole('dialog', { name: '操作ガイド' })
+  await expect(guide).toBeVisible()
+  await expect(guide).toContainText('PC：道をクリック')
+  await expect(guide).toContainText('タッチ：道または画面の矢印ボタンをタップ')
+  await expect(guide).toContainText('カメラは歩く人を自動で追います')
+  await expect(guide.getByRole('button', { name: '閉じる' })).toBeFocused()
+  await page.keyboard.down('d')
+  await page.waitForTimeout(200)
+  await page.keyboard.up('d')
+  await expect(page.locator('.town')).toHaveAttribute('data-position-x', '0.0')
+  await page.screenshot({
+    path: `test-results/${test.info().project.name}-controls-popup.png`,
+  })
+  await page.keyboard.press('Escape')
+  await expect(guide).toBeHidden()
+  await expect(help).toBeFocused()
+  await help.click()
+  await guide.getByRole('button', { name: '閉じる' }).click()
+  await expect(guide).toBeHidden()
+
+  await openHomeEditor(page)
+  await expect(homeEditor(page)).toBeVisible()
+  await expect(
+    page.getByRole('button', { name: 'このブラウザに家を保存' }),
+  ).toHaveAccessibleDescription(/公開範囲：このブラウザーだけに保存/)
+  await expect(page.getByRole('button', { name: 'Xでログイン' })).toHaveCount(0)
+  await page.reload()
+  await expect(page.getByRole('button', { name: '散歩する' })).toBeVisible()
+  await expect(page.locator('canvas')).toHaveCount(0)
+})
 
 test('legal links navigate to Japanese pages with direct SPA access', async ({
   page,
@@ -9,6 +94,8 @@ test('legal links navigate to Japanese pages with direct SPA access', async ({
   const errors: string[] = []
   page.on('pageerror', (error) => errors.push(error.message))
   await page.goto('/')
+  await enterTown(page)
+  await openHomeEditor(page)
   const textarea = page.getByLabel('1. 台詞のJSONを貼り付ける')
   const draft = JSON.stringify({ ...example, partnerName: '未保存の台詞' })
   await textarea.fill(draft)
@@ -42,7 +129,6 @@ test('legal links navigate to Japanese pages with direct SPA access', async ({
   await expect(page).toHaveURL(/\/$/)
   const privacyOpened = context.waitForEvent('page')
   await page
-    .locator('footer')
     .getByRole('link', { name: 'プライバシーポリシー', exact: true })
     .click()
   const privacyPage = await privacyOpened
@@ -89,12 +175,53 @@ test('legal links navigate to Japanese pages with direct SPA access', async ({
   expect(errors).toEqual([])
 })
 
+test('reads a full length line in a short landscape viewport', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 667, height: 320 })
+  const ending = 'ここが最後のひとこと。'
+  const line =
+    '窓の外から聞こえる風と夕暮れ。'.repeat(12).slice(0, 160 - ending.length) +
+    ending
+  await page.goto('/')
+  await enterTown(page)
+  await openHomeEditor(page)
+  await page.getByLabel('1. 台詞のJSONを貼り付ける').fill(
+    JSON.stringify({
+      ...example,
+      partnerName: '横向きテスト',
+      lines: [{ scene: 'anytime', text: line }],
+    }),
+  )
+  await page.getByRole('button', { name: '台詞を確認する' }).click()
+  await page.getByRole('button', { name: 'このブラウザに家を保存' }).click()
+  await expect(homeEditor(page).getByRole('status')).toContainText(
+    'このブラウザに保存',
+  )
+  await homeEditor(page).getByRole('button', { name: '閉じる' }).click()
+
+  const read = page.getByRole('button', { name: '近くの台詞' })
+  await expect(read).toBeInViewport({ ratio: 1 })
+  if (test.info().project.use.hasTouch) await read.tap()
+  else await read.click()
+  const reader = page.getByRole('dialog', { name: '近くの台詞' })
+  const fullText = reader.getByText(line, { exact: true })
+  await fullText.evaluate((text) => text.scrollIntoView({ block: 'center' }))
+  await expect(fullText).toBeInViewport({ ratio: 1 })
+  await page.screenshot({
+    path: `test-results/${test.info().project.name}-landscape-line.png`,
+  })
+  await reader.getByRole('button', { name: '閉じる' }).click()
+  await expect(read).toBeFocused()
+})
+
 test('renders 3D, walks, validates JSON, saves locally, and reloads', async ({
   page,
 }) => {
   const errors: string[] = []
   page.on('pageerror', (error) => errors.push(error.message))
   await page.goto('/')
+  await enterTown(page)
   const town = page.getByRole('region', { name: '散歩できる3Dの街' })
   await expect(town).toHaveAttribute('data-ready', 'true')
   await expect(page.locator('canvas')).toBeVisible()
@@ -103,6 +230,7 @@ test('renders 3D, walks, validates JSON, saves locally, and reloads', async ({
   await expect
     .poll(async () => Number(await town.getAttribute('data-position')))
     .toBeLessThan(13)
+  await openHomeEditor(page)
   const textarea = page.getByLabel('1. 台詞のJSONを貼り付ける')
   await textarea.fill('{broken')
   await page.getByRole('button', { name: '台詞を確認する' }).click()
@@ -124,15 +252,24 @@ test('renders 3D, walks, validates JSON, saves locally, and reloads', async ({
     page.getByLabel('公開前の台詞プレビュー').locator('img'),
   ).toHaveCount(0)
   await page.getByRole('button', { name: 'このブラウザに家を保存' }).click()
-  await expect(page.getByRole('status')).toContainText('このブラウザに保存')
+  await expect(homeEditor(page).getByRole('status')).toContainText(
+    'このブラウザに保存',
+  )
   await page.reload()
+  await enterTown(page)
+  await openHomeEditor(page)
   await expect(textarea).toContainText('テストの住人')
   await page.getByRole('button', { name: '自分の家を削除する' }).click()
-  await expect(page.getByRole('status')).toContainText('削除しました')
+  await expect(homeEditor(page).getByRole('status')).toContainText(
+    '削除しました',
+  )
   await page.reload()
+  await enterTown(page)
+  await openHomeEditor(page)
   await expect(
     page.getByRole('button', { name: '自分の家を削除する' }),
   ).toHaveCount(0)
+  await page.getByRole('button', { name: '閉じる', exact: true }).click()
   expect(errors).toEqual([])
   expect(
     await page.evaluate(
@@ -157,6 +294,7 @@ test('keyboard walking updates proximity and preserves live coordinates across U
   page,
 }) => {
   await page.goto('/')
+  await enterTown(page)
   const town = page.getByRole('region', { name: '散歩できる3Dの街' })
   await expect(town).toHaveAttribute('data-ready', 'true')
   await expect(
@@ -199,9 +337,11 @@ test('hides a resident locally without releasing their plot and restores them', 
   page,
 }) => {
   await page.goto('/')
+  await enterTown(page)
   await expect(
     page.locator('.bubble').filter({ hasText: 'ハル' }),
   ).toBeVisible()
+  await openHomeEditor(page)
   await page.getByText('住人の表示設定', { exact: true }).click()
   await page.getByRole('button', { name: 'ハルを非表示にする' }).click()
   await expect(page.locator('.bubble').filter({ hasText: 'ハル' })).toHaveCount(
@@ -209,12 +349,14 @@ test('hides a resident locally without releasing their plot and restores them', 
   )
   await expect(page.locator('#plot option[value="0"]')).toBeDisabled()
   await page.reload()
+  await enterTown(page)
   await expect(
     page.getByRole('region', { name: '散歩できる3Dの街' }),
   ).toHaveAttribute('data-ready', 'true')
   await expect(page.locator('.bubble').filter({ hasText: 'ハル' })).toHaveCount(
     0,
   )
+  await openHomeEditor(page)
   await page.getByText('住人の表示設定（1人を非表示）', { exact: true }).click()
   await page.getByRole('button', { name: '非表示をすべて解除' }).click()
   await expect(
@@ -226,17 +368,23 @@ test('moves sideways and saves an apartment room across reloads', async ({
   page,
 }) => {
   await page.goto('/')
+  await enterTown(page)
   const town = page.getByRole('region', { name: '散歩できる3Dの街' })
   await expect(town).toHaveAttribute('data-ready', 'true')
   await page.getByRole('button', { name: '右へ歩く', exact: true }).click()
   await expect
     .poll(async () => Number(await town.getAttribute('data-position-x')))
     .toBeGreaterThan(1)
+  await openHomeEditor(page)
   await page.getByLabel('2. 家を置く場所').selectOption('12')
   await page.getByRole('button', { name: '台詞を確認する' }).click()
   await page.getByRole('button', { name: 'このブラウザに家を保存' }).click()
-  await expect(page.getByRole('status')).toContainText('このブラウザに保存')
+  await expect(homeEditor(page).getByRole('status')).toContainText(
+    'このブラウザに保存',
+  )
   await page.reload()
+  await enterTown(page)
+  await openHomeEditor(page)
   await expect(page.getByLabel('2. 家を置く場所')).toHaveValue('12')
   await page.getByLabel('2. 家を置く場所').selectOption('1')
   await expect(
@@ -246,8 +394,12 @@ test('moves sideways and saves an apartment room across reloads', async ({
   ).toBeVisible()
   await page.getByRole('button', { name: '台詞を確認する' }).click()
   await page.getByRole('button', { name: 'このブラウザに家を保存' }).click()
-  await expect(page.getByRole('status')).toContainText('このブラウザに保存')
+  await expect(homeEditor(page).getByRole('status')).toContainText(
+    'このブラウザに保存',
+  )
   await page.reload()
+  await enterTown(page)
+  await openHomeEditor(page)
   await expect(page.getByLabel('2. 家を置く場所')).toHaveValue('1')
 })
 
@@ -255,6 +407,7 @@ test('selects lots and apartment windows directly on the canvas', async ({
   page,
 }) => {
   await page.goto('/')
+  await enterTown(page)
   const town = page.getByRole('region', { name: '散歩できる3Dの街' })
   const canvas = page.locator('canvas')
   await expect(town).toHaveAttribute('data-ready', 'true')
@@ -284,12 +437,14 @@ test('selects lots and apartment windows directly on the canvas', async ({
 
   await walk('奥へ歩く', 'data-position', 12)
   await clickWorld(-4, 0.85, 9.8)
+  await expect(page.getByRole('status')).toContainText('を選びました')
   await expect(page.locator('#plot')).toHaveValue('2')
   await walk('奥へ歩く', 'data-position', 6)
   await walk('奥へ歩く', 'data-position', 0)
   await walk('左へ歩く', 'data-position-x', -6)
   await walk('左へ歩く', 'data-position-x', -12)
   await clickWorld(-13, 3.55, -4.62)
+  await openHomeEditor(page)
   await expect(page.locator('#plot')).toHaveValue('16')
   await expect(
     page.getByRole('button', { name: '自分の家を削除する' }),

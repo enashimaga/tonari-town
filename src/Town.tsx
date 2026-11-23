@@ -22,11 +22,15 @@ import {
 import { pickLine } from './partner'
 import { apartment, plots, moveToward, type Home, type Position } from './world'
 
+export type NearbyLine = { plot: number; speaker: string; text: string }
+
 type Props = {
   homes: Home[]
+  inputPaused: boolean
   hour: number
   selectedPlot: number
   onSelectPlot: (plot: number) => void
+  onReadLines: (lines: NearbyLine[]) => void
   hiddenOwners: ReadonlySet<string>
 }
 const colors = ['#dfbba1', '#b1c2ad', '#e4d2a6', '#adc2ca']
@@ -135,6 +139,7 @@ function Trees({ variant }: { variant: number }) {
 
 function Movement({
   homes,
+  inputPaused,
   target,
   position,
   diagnostics,
@@ -142,6 +147,7 @@ function Movement({
   target: RefObject<Position>
   position: RefObject<Position>
   diagnostics: RefObject<HTMLElement | null>
+  inputPaused: boolean
 }) {
   const avatar = useRef<Group>(null)
   const keys = useRef(new Set<string>())
@@ -151,10 +157,15 @@ function Movement({
   const occupied = useMemo(() => homes.map((home) => home.plot), [homes])
 
   useEffect(() => {
+    if (inputPaused) {
+      keys.current.clear()
+      target.current = { ...position.current }
+      return
+    }
     const down = (event: KeyboardEvent) => {
       if (
         (event.target as HTMLElement)?.closest(
-          'input,textarea,select,button,[contenteditable="true"]',
+          'input,textarea,select,[contenteditable="true"]',
         )
       )
         return
@@ -175,8 +186,8 @@ function Movement({
       }
     }
     const up = (event: KeyboardEvent) => {
-      keys.current.delete(event.key.toLowerCase())
-      if (!keys.current.size) target.current = { ...position.current }
+      if (keys.current.delete(event.key.toLowerCase()) && !keys.current.size)
+        target.current = { ...position.current }
     }
     const clear = () => {
       keys.current.clear()
@@ -190,7 +201,7 @@ function Movement({
       window.removeEventListener('keyup', up)
       window.removeEventListener('blur', clear)
     }
-  }, [position, target])
+  }, [inputPaused, position, target])
 
   useFrame(({ camera }, delta) => {
     const dx =
@@ -258,12 +269,14 @@ function Speech({
   homes,
   hour,
   hiddenOwners,
+  onNearbyLines,
   position,
 }: Pick<Props, 'homes' | 'hour' | 'hiddenOwners'> & {
+  onNearbyLines: (lines: NearbyLine[]) => void
   position: RefObject<Position>
 }) {
-  const [visible, setVisible] = useState('')
-  const previous = useRef('')
+  const [visible, setVisible] = useState<string[]>([])
+  const previous = useRef(visible)
   const [tick, setTick] = useState(0)
   const elapsed = useRef(0.15)
   const labels = useMemo(
@@ -293,34 +306,51 @@ function Speech({
     if (elapsed.current <= 0.15) return
     elapsed.current = 0
     const next = labels
-      .map(({ x, z }) =>
-        Math.hypot(x - position.current.x, z - position.current.z) <= 6
-          ? '1'
-          : '0',
+      .filter(
+        ({ x, z }) =>
+          Math.hypot(x - position.current.x, z - position.current.z) <= 6,
       )
-      .join('')
-    if (next !== previous.current) {
+      .map(({ home }) => home.owner_id)
+    if (
+      next.length !== previous.current.length ||
+      next.some((id, i) => id !== previous.current[i])
+    ) {
       previous.current = next
       setVisible(next)
     }
   })
-  return labels.map(({ home, x, y, z }, index) =>
-    visible[index] === '1' ? (
-      <Html
-        key={home.owner_id}
-        center
-        position={[x, y, z]}
-        calculatePosition={bubblePosition}
-        zIndexRange={[10, 0]}
-        style={{ pointerEvents: 'none' }}
-      >
-        <div className="bubble">
-          <small>{home.partner.partnerName}</small>
-          <p>{pickLine(home.partner, hour, tick)}</p>
-        </div>
-      </Html>
-    ) : null,
+  const nearby = useMemo(
+    () =>
+      labels
+        .filter(({ home }) => visible.includes(home.owner_id))
+        .map(({ home, ...position }) => ({
+          ...position,
+          id: home.owner_id,
+          plot: home.plot,
+          speaker: home.partner.partnerName,
+          text: pickLine(home.partner, hour, tick),
+        })),
+    [labels, visible, hour, tick],
   )
+  useEffect(() => {
+    onNearbyLines(nearby)
+  }, [nearby, onNearbyLines])
+
+  return nearby.map(({ id, x, y, z, speaker, text }) => (
+    <Html
+      key={id}
+      center
+      position={[x, y, z]}
+      calculatePosition={bubblePosition}
+      zIndexRange={[10, 0]}
+      style={{ pointerEvents: 'none' }}
+    >
+      <div className="bubble">
+        <small>{speaker}</small>
+        <p>{text}</p>
+      </div>
+    </Html>
+  ))
 }
 
 const Street = memo(function Street({
@@ -608,6 +638,7 @@ class CanvasBoundary extends Component<
 }
 
 export default function Town(props: Props) {
+  const [nearby, setNearby] = useState<NearbyLine[]>([])
   const target = useRef<Position>({ x: 0, z: 18 })
   const position = useRef<Position>({ x: 0, z: 18 })
   const diagnostics = useRef<HTMLElement>(null)
@@ -637,6 +668,7 @@ export default function Town(props: Props) {
           />
           <Movement
             homes={props.homes}
+            inputPaused={props.inputPaused}
             target={target}
             position={position}
             diagnostics={diagnostics}
@@ -645,6 +677,7 @@ export default function Town(props: Props) {
             homes={props.homes}
             hour={props.hour}
             hiddenOwners={props.hiddenOwners}
+            onNearbyLines={setNearby}
             position={position}
           />
         </Canvas>
@@ -652,6 +685,20 @@ export default function Town(props: Props) {
       <div className="town-caption">
         <span className="dot" /> こもれびの街 <span>01</span>
       </div>
+      {nearby.length > 0 && (
+        <button
+          type="button"
+          className="nearby-lines"
+          aria-haspopup="dialog"
+          aria-controls="line-reader"
+          onClick={(event) => {
+            event.currentTarget.focus()
+            props.onReadLines(nearby)
+          }}
+        >
+          近くの台詞
+        </button>
+      )}
       <div className="walk-controls">
         <button
           type="button"
