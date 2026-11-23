@@ -288,13 +288,19 @@ class CanvasBoundary extends Component<
   }
 }
 
+// 2: full look, 1: DPR 1, 0: no blur or shadows. Fixed bounds because drei's
+// default derives them from the highest fps it has seen, so a brief spike over
+// 100 fps makes it treat anything under 60 fps as too slow.
+type Quality = 0 | 1 | 2
+const qualityBounds = () => [30, 50] as [number, number]
+
 export default function Town(props: Props) {
   const target = useRef<Position>({ x: 0, z: 18 })
   const position = useRef<Position>({ x: 0, z: 18 })
   const diagnostics = useRef<HTMLElement>(null)
   const avatar = useRef<Group>(null)
   const [ready, setReady] = useState(false)
-  const [lowPower, setLowPower] = useState(false)
+  const [quality, setQuality] = useState<Quality>(2)
   return (
     <section
       ref={diagnostics}
@@ -306,20 +312,25 @@ export default function Town(props: Props) {
     >
       <CanvasBoundary>
         <Canvas
-          shadows={!lowPower}
-          dpr={lowPower ? 1 : [1, 1.25]}
+          shadows={quality > 0}
+          dpr={quality === 2 ? [1, 1.25] : 1}
           camera={{ position: [0, 13, 33], fov: 48, near: 0.1, far: 95 }}
           onCreated={() => setReady(true)}
           fallback={<p>このブラウザでは3D表示を利用できません。</p>}
         >
-          <PerformanceMonitor onDecline={() => setLowPower(true)} />
+          <PerformanceMonitor
+            bounds={qualityBounds}
+            onDecline={() =>
+              setQuality((level) => (level > 0 ? ((level - 1) as Quality) : 0))
+            }
+          />
           <Street
             homes={props.homes}
             hour={props.hour}
             selectedPlot={props.selectedPlot}
             onSelectPlot={props.onSelectPlot}
             target={target}
-            effects={!lowPower}
+            effects={quality > 0}
             avatar={avatar}
           />
           <Movement
