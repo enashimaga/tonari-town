@@ -306,7 +306,7 @@ export default function Town(props: Props) {
     >
       <CanvasBoundary>
         <Canvas
-          shadows
+          shadows={!lowPower}
           dpr={lowPower ? 1 : [1, 1.25]}
           camera={{ position: [0, 13, 33], fov: 48, near: 0.1, far: 95 }}
           onCreated={() => setReady(true)}

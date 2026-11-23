@@ -1,4 +1,9 @@
-import { CanvasTexture, RepeatWrapping, SRGBColorSpace } from 'three'
+import {
+  CanvasTexture,
+  LinearMipmapNearestFilter,
+  RepeatWrapping,
+  SRGBColorSpace,
+} from 'three'
 
 export type TextureKind =
   'grain' | 'felt' | 'pavers' | 'planks' | 'roof' | 'siding' | 'strata'
@@ -171,6 +176,7 @@ export function texture(kind: TextureKind) {
   result.wrapS = result.wrapT = RepeatWrapping
   result.repeat.setScalar(1 / tileSize[kind])
   result.colorSpace = SRGBColorSpace
+  result.minFilter = LinearMipmapNearestFilter
   cache.set(kind, result)
   return result
 }

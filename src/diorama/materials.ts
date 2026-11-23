@@ -102,7 +102,7 @@ export function createMaterials(look: Look, night: boolean) {
     trunk: textured(p.trunk, 'planks', 0.9),
     leaves: textured('#ffffff', 'felt', 0.85),
     tuft: surface('#ffffff', { roughness: 0.9 }),
-    flower: surface('#ffffff', { roughness: 0.6 }),
+    flower: surface('#ffffff', { roughness: 0.9 }),
     plinthSide: surface('#ffffff', {
       kind: 'strata',
       roughness: 0.95,

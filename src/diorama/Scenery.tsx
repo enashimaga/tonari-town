@@ -77,10 +77,12 @@ function Merged({
   geometries,
   materials,
   cast = true,
+  receive = true,
 }: {
   geometries: Partial<Record<string, BufferGeometry>>
   materials: { [key: string]: Material | Material[] | undefined }
   cast?: boolean
+  receive?: boolean
 }) {
   return (
     <>
@@ -91,7 +93,7 @@ function Merged({
             geometry={geometry}
             material={materials[key]}
             castShadow={cast}
-            receiveShadow
+            receiveShadow={receive}
           />
         ) : null,
       )}
@@ -226,14 +228,12 @@ function Trees({ materials }: { materials: Materials }) {
         args={[geometry.trunk, undefined, trunkInstances.length]}
         material={materials.trunk}
         castShadow
-        receiveShadow
       />
       <instancedMesh
         ref={canopies}
         args={[geometry.canopy, undefined, canopyInstances.length]}
         material={materials.leaves}
         castShadow
-        receiveShadow
       />
     </>
   )
@@ -250,7 +250,7 @@ function Scatter({ materials }: { materials: Materials }) {
     const next = seeded(29)
     const grass = new Color(look.palette.grass)
     const tuftInstances: Instance[] = []
-    while (tuftInstances.length < 420) {
+    while (tuftInstances.length < 300) {
       const x = -28 + next() * 60
       const z = -30 + next() * 60
       if (!onGrass(x, z)) continue
@@ -263,7 +263,7 @@ function Scatter({ materials }: { materials: Materials }) {
       })
     }
     const flowerInstances: Instance[] = []
-    while (flowerInstances.length < 240) {
+    while (flowerInstances.length < 160) {
       const cx = -28 + next() * 60
       const cz = -30 + next() * 60
       if (!onGrass(cx, cz)) continue
@@ -308,7 +308,6 @@ function Scatter({ materials }: { materials: Materials }) {
         ref={tufts}
         args={[geometry.tuft, undefined, layout.tuftInstances.length]}
         material={materials.tuft}
-        receiveShadow
       />
       <instancedMesh
         ref={flowers}
@@ -320,7 +319,6 @@ function Scatter({ materials }: { materials: Materials }) {
         args={[geometry.rock, undefined, layout.rockInstances.length]}
         material={materials.stone}
         castShadow
-        receiveShadow
       />
     </>
   )
@@ -331,13 +329,14 @@ function Plinth({ materials }: { materials: Materials }) {
   return (
     <group>
       {shared().plinthSides.map((geometry, index) => (
-        <mesh key={index} geometry={geometry} material={side} />
+        <mesh key={index} geometry={geometry} material={side} renderOrder={1} />
       ))}
       {shared().plinthFrame.map((geometry, index) => (
         <mesh
           key={index}
           geometry={geometry}
           material={materials.plinthFrame}
+          renderOrder={1}
         />
       ))}
     </group>
@@ -432,6 +431,7 @@ export const Scenery = memo(function Scenery({
                 <Merged
                   geometries={geometry.houses[index % geometry.houses.length]}
                   materials={houseMaterials(index)}
+                  receive={false}
                 />
               ) : selected ? (
                 <Merged
@@ -458,6 +458,7 @@ export const Scenery = memo(function Scenery({
         })}
       <group position={[apartment.x, 0, apartment.z]}>
         <Merged
+          receive={false}
           geometries={geometry.apartment}
           materials={{
             ...materials,
@@ -487,7 +488,6 @@ export const Scenery = memo(function Scenery({
                     : materials.apartmentFrame
                 }
                 castShadow
-                receiveShadow
               />
               <mesh
                 geometry={geometry.windowGlass}
@@ -499,6 +499,7 @@ export const Scenery = memo(function Scenery({
               />
               {(plot.floor ?? 1) > 1 && (
                 <Merged
+                  receive={false}
                   geometries={geometry.balcony}
                   materials={{
                     trim: materials.apartmentTrim,
