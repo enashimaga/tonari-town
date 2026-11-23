@@ -638,11 +638,11 @@ class CanvasBoundary extends Component<
 }
 
 export default function Town(props: Props) {
+  const [nearby, setNearby] = useState<NearbyLine[]>([])
   const target = useRef<Position>({ x: 0, z: 18 })
   const position = useRef<Position>({ x: 0, z: 18 })
   const diagnostics = useRef<HTMLElement>(null)
   const [ready, setReady] = useState(false)
-  const [nearby, setNearby] = useState<NearbyLine[]>([])
   return (
     <section
       ref={diagnostics}
