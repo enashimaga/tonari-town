@@ -66,7 +66,9 @@ button:focus-visible,
 a:focus-visible,
 select:focus-visible,
 textarea:focus-visible,
-summary:focus-visible {
+summary:focus-visible,
+#town-map:focus-visible,
+#home-editor:focus-visible {
   outline: 3px solid #699a88;
   outline-offset: 3px;
 }
@@ -170,6 +172,70 @@ select {
   color: #62795d;
   font-size: 12px;
   margin: 0 0 20px;
+}
+.town-entry {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  margin-bottom: 12px;
+}
+.town-entry p {
+  margin: 0;
+  font-size: 12px;
+}
+.town-entry p a {
+  color: inherit;
+  font-weight: 600;
+}
+.entry-action {
+  border-radius: 8px;
+  padding: 9px 14px;
+  background: #456d5d;
+  color: #fff;
+  text-decoration: none;
+}
+.entry-action:hover {
+  background: #355646;
+}
+.welcome-guide:not([hidden]) {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 4px 12px;
+  margin-bottom: 12px;
+  padding: 10px 14px;
+  border: 1px solid #d8e0d2;
+  border-radius: 12px;
+  background: #eaf0e5;
+  font-size: 13px;
+}
+.welcome-guide h2 {
+  margin: 0;
+  font-size: 16px;
+}
+.welcome-guide p {
+  grid-column: 1 / -1;
+  margin: 0;
+}
+.welcome-guide dl {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 2px 10px;
+  margin: 0;
+}
+.welcome-guide dt {
+  font-weight: 600;
+}
+.welcome-guide dd {
+  margin: 0;
+}
+.welcome-guide button {
+  grid-column: 2;
+  grid-row: 1;
+  padding: 5px 9px;
+  font-size: 12px;
 }
 .layout {
   display: grid;

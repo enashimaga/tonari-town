@@ -57,6 +57,15 @@ for (const expired of [false, true]) {
     await expect(
       page.getByRole('button', { name: 'Xでログイン' }),
     ).toBeEnabled()
+    await expect(
+      page.getByRole('button', { name: 'Xでログインして家を登録' }),
+    ).toBeVisible()
+    await expect(
+      page.getByText('散歩や公開された台詞の閲覧にログインは不要です。'),
+    ).toBeVisible()
+    await expect(
+      page.getByRole('link', { name: 'お試しで家を登録' }),
+    ).toHaveCount(0)
     await page.evaluate(
       ({ key, value }) => localStorage.setItem(key, JSON.stringify(value)),
       {
@@ -68,6 +77,13 @@ for (const expired of [false, true]) {
     await expect(
       page.getByRole('button', { name: 'ログアウト', exact: true }),
     ).toBeVisible()
+    await expect(
+      page.getByRole('button', { name: '非公開で保存する' }),
+    ).toHaveAccessibleDescription(/ほかの人には表示されません/)
+    await page.getByLabel('この家と台詞を街に公開する').check()
+    await expect(
+      page.getByRole('button', { name: '確認した台詞を公開する' }),
+    ).toHaveAccessibleDescription(/街を訪れた人に、家と台詞が公開されます/)
     await page.reload()
     await expect(
       page.getByRole('button', { name: 'ログアウト', exact: true }),

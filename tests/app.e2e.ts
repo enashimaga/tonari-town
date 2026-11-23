@@ -2,6 +2,43 @@ import { expect, test } from '@playwright/test'
 import { PerspectiveCamera, Vector3 } from 'three'
 import { example } from '../src/partner'
 
+test('introduces the walk and remembers when the guide is dismissed', async ({
+  page,
+}) => {
+  await page.goto('/')
+  const guide = page.getByRole('region', { name: 'はじめての散歩' })
+  const toggle = page.getByRole('button', { name: '操作ガイド' })
+  await expect(guide).toBeVisible()
+  await expect(guide).toContainText('PC：道をクリック')
+  await expect(guide).toContainText('タッチ：道または画面の矢印ボタンをタップ')
+  await expect(guide).toContainText('カメラは歩く人を自動で追います')
+  await expect(
+    page.getByText('（このブラウザーに保存・共有されません）', {
+      exact: false,
+    }),
+  ).toBeVisible()
+  await expect(
+    page.getByRole('button', { name: 'このブラウザに家を保存' }),
+  ).toHaveAccessibleDescription(/公開範囲：このブラウザーだけに保存/)
+
+  await guide.getByRole('button', { name: 'ガイドを閉じる' }).click()
+  await expect(guide).toBeHidden()
+  await expect(toggle).toHaveAttribute('aria-expanded', 'false')
+  await expect(toggle).toBeFocused()
+  await page.reload()
+  await expect(guide).toBeHidden()
+  await toggle.click()
+  await expect(guide).toBeVisible()
+  await expect(toggle).toHaveAttribute('aria-expanded', 'true')
+
+  await page.getByRole('link', { name: '散歩する' }).click()
+  await expect(page.locator('#town-map')).toBeFocused()
+  await expect(
+    page.getByRole('link', { name: 'お試しで家を登録' }),
+  ).toHaveAttribute('href', '#home-editor')
+  await expect(page.getByRole('button', { name: 'Xでログイン' })).toHaveCount(0)
+})
+
 test('legal links navigate to Japanese pages with direct SPA access', async ({
   page,
   context,

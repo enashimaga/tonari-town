@@ -20,6 +20,7 @@ import {
 const Town = lazy(() => import('./Town'))
 const initialInput = JSON.stringify(example, null, 2)
 const localKey = 'tonari-town:poc-home:v1'
+const guideKey = 'tonari-town:welcome-guide:v1'
 const demoMode = !supabase && !configurationError
 const sceneNames = {
   anytime: 'いつでも',
@@ -51,6 +52,14 @@ function loadLocalHome(): Home | null {
   }
 }
 
+function shouldShowGuide() {
+  try {
+    return localStorage.getItem(guideKey) !== 'dismissed'
+  } catch {
+    return true
+  }
+}
+
 export default function App() {
   const [user, setUser] = useState<User | null>(null)
   const [authReady, setAuthReady] = useState(demoMode)
@@ -65,6 +74,8 @@ export default function App() {
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
   const [hiddenOwners, setHiddenOwners] = useState(loadHiddenOwners)
+  const [guideOpen, setGuideOpen] = useState(shouldShowGuide)
+  const guideToggle = useRef<HTMLButtonElement>(null)
   const requestVersion = useRef(0)
   const currentIdentity = useRef<string | null | undefined>(undefined)
 
@@ -88,6 +99,15 @@ export default function App() {
           ? error.message
           : '非表示の設定を保存できませんでした。',
       )
+    }
+  }
+
+  function closeGuide() {
+    setGuideOpen(false)
+    try {
+      localStorage.setItem(guideKey, 'dismissed')
+    } catch {
+      return
     }
   }
 
@@ -264,39 +284,20 @@ export default function App() {
         </a>
         <div className="header-actions">
           <span className="poc-badge">小さな街の PoC</span>
-          {supabase &&
-            (user ? (
-              <button
-                disabled={busy}
-                onClick={() =>
-                  run(async () => {
-                    const { error } = await supabase!.auth.signOut()
-                    if (error) throw new Error('ログアウトできませんでした。')
-                    setStatus('ログアウトしました。')
-                  })
-                }
-              >
-                ログアウト
-              </button>
-            ) : (
-              <button
-                disabled={busy || !authReady}
-                onClick={() =>
-                  run(async () => {
-                    const { error } = await supabase!.auth.signInWithOAuth({
-                      provider: 'x',
-                      options: {
-                        redirectTo: `${location.origin}/auth/callback`,
-                      },
-                    })
-                    if (error)
-                      throw new Error('Xログインを開始できませんでした。')
-                  })
-                }
-              >
-                Xでログイン
-              </button>
-            ))}
+          {supabase && user && (
+            <button
+              disabled={busy}
+              onClick={() =>
+                run(async () => {
+                  const { error } = await supabase!.auth.signOut()
+                  if (error) throw new Error('ログアウトできませんでした。')
+                  setStatus('ログアウトしました。')
+                })
+              }
+            >
+              ログアウト
+            </button>
+          )}
         </div>
       </header>
       <LegalLinks newTab />
@@ -335,12 +336,84 @@ export default function App() {
             {configurationError}
           </p>
         )}
-        {demoMode && (
-          <p className="notice">
-            いまは架空の住人がいるお試しの街です。保存した家は、このブラウザだけに残ります。
+        <div className="town-entry">
+          <a className="entry-action" href="#town-map">
+            散歩する
+          </a>
+          <button
+            type="button"
+            ref={guideToggle}
+            aria-expanded={guideOpen}
+            aria-controls="welcome-guide"
+            onClick={() => (guideOpen ? closeGuide() : setGuideOpen(true))}
+          >
+            操作ガイド
+          </button>
+          {demoMode ? (
+            <p>
+              <a href="#home-editor">お試しで家を登録</a>
+              {'（このブラウザーに保存・共有されません）'}
+              架空の住人がいる街を散歩できます。
+            </p>
+          ) : supabase && !user ? (
+            <>
+              <button
+                type="button"
+                disabled={busy || !authReady}
+                onClick={() =>
+                  run(async () => {
+                    const { error } = await supabase!.auth.signInWithOAuth({
+                      provider: 'x',
+                      options: {
+                        redirectTo: `${location.origin}/auth/callback`,
+                      },
+                    })
+                    if (error)
+                      throw new Error('Xログインを開始できませんでした。')
+                  })
+                }
+              >
+                Xでログインして家を登録
+              </button>
+              <p>散歩や公開された台詞の閲覧にログインは不要です。</p>
+            </>
+          ) : supabase && user ? (
+            <p>
+              <a href="#home-editor">家と台詞を登録・編集する</a>
+            </p>
+          ) : null}
+        </div>
+        <section
+          id="welcome-guide"
+          className="welcome-guide"
+          aria-labelledby="welcome-guide-title"
+          hidden={!guideOpen}
+        >
+          <h2 id="welcome-guide-title">はじめての散歩</h2>
+          <p>
+            家のそばまで歩いて、AIパートナーの台詞を吹き出しで読んでみよう。
           </p>
-        )}
-        <div className="layout">
+          <dl>
+            <dt>歩く</dt>
+            <dd>
+              PC：道をクリック、画面の矢印ボタン、矢印キー／WASD
+              <br />
+              タッチ：道または画面の矢印ボタンをタップ
+            </dd>
+            <dt>視点</dt>
+            <dd>PC・タッチ共通：カメラは歩く人を自動で追います。</dd>
+          </dl>
+          <button
+            type="button"
+            onClick={() => {
+              closeGuide()
+              guideToggle.current?.focus()
+            }}
+          >
+            ガイドを閉じる
+          </button>
+        </section>
+        <div className="layout" id="town-map" tabIndex={-1}>
           <Suspense
             fallback={
               <div className="town canvas-fallback">街を準備しています…</div>
@@ -371,7 +444,7 @@ export default function App() {
               }}
             />
           </Suspense>
-          <aside className="editor">
+          <aside className="editor" id="home-editor" tabIndex={-1}>
             <p className="eyebrow">YOUR LITTLE HOME</p>
             <h2>この街で、暮らす準備。</h2>
             <p className="muted">
@@ -439,8 +512,19 @@ export default function App() {
                 この家と台詞を街に公開する
               </label>
             )}
+            {canSave && (
+              <p className="muted" id="save-scope">
+                公開範囲：
+                {demoMode
+                  ? 'このブラウザーだけに保存し、ほかの人には共有されません。'
+                  : published
+                    ? '街を訪れた人に、家と台詞が公開されます。'
+                    : '保存しても、家と台詞はほかの人には表示されません。'}
+              </p>
+            )}
             <button
               className="primary"
+              aria-describedby={canSave ? 'save-scope' : undefined}
               disabled={
                 !preview || !canSave || busy || Boolean(configurationError)
               }
