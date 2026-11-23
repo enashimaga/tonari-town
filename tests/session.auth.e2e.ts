@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test, type Page } from '@playwright/test'
 
 const storageKey = 'sb-session-test-auth-token'
 const user = {
@@ -22,6 +22,11 @@ function session(expiresAt: number) {
     expires_at: expiresAt,
     user,
   }
+}
+
+async function enterEditor(page: Page) {
+  await page.getByRole('button', { name: '散歩する' }).click()
+  await page.getByRole('button', { name: /住む場所を決める/ }).click()
 }
 
 for (const expired of [false, true]) {
@@ -55,17 +60,12 @@ for (const expired of [false, true]) {
     )
     await page.goto('/')
     await expect(
-      page.getByRole('button', { name: 'Xでログイン' }),
-    ).toBeEnabled()
+      page.getByText(/散歩や公開された台詞の閲覧にログインは不要です。/),
+    ).toBeVisible()
+    await enterEditor(page)
     await expect(
       page.getByRole('button', { name: 'Xでログインして家を登録' }),
-    ).toBeVisible()
-    await expect(
-      page.getByText('散歩や公開された台詞の閲覧にログインは不要です。'),
-    ).toBeVisible()
-    await expect(
-      page.getByRole('link', { name: 'お試しで家を登録' }),
-    ).toHaveCount(0)
+    ).toBeEnabled()
     await page.evaluate(
       ({ key, value }) => localStorage.setItem(key, JSON.stringify(value)),
       {
@@ -74,6 +74,7 @@ for (const expired of [false, true]) {
       },
     )
     await page.reload()
+    await enterEditor(page)
     await expect(
       page.getByRole('button', { name: 'ログアウト', exact: true }),
     ).toBeVisible()
@@ -85,12 +86,14 @@ for (const expired of [false, true]) {
       page.getByRole('button', { name: '確認した台詞を公開する' }),
     ).toHaveAccessibleDescription(/街を訪れた人に、家と台詞が公開されます/)
     await page.reload()
+    await enterEditor(page)
     await expect(
       page.getByRole('button', { name: 'ログアウト', exact: true }),
     ).toBeVisible()
     await page.close()
     const reopened = await context.newPage()
     await reopened.goto('/')
+    await enterEditor(reopened)
     await expect(
       reopened.getByRole('button', { name: 'ログアウト', exact: true }),
     ).toBeVisible()
@@ -103,6 +106,7 @@ for (const expired of [false, true]) {
       reopened.getByRole('button', { name: 'Xでログイン' }),
     ).toBeEnabled()
     await reopened.reload()
+    await enterEditor(reopened)
     await expect(
       reopened.getByRole('button', { name: 'Xでログイン' }),
     ).toBeEnabled()

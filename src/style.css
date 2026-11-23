@@ -82,7 +82,6 @@ summary:focus-visible,
   border-bottom: 1px solid #dedfd4;
   display: flex;
   align-items: center;
-  justify-content: space-between;
 }
 .brand {
   display: flex;
@@ -111,24 +110,32 @@ summary:focus-visible,
   letter-spacing: 0.22em;
   margin-top: -4px;
 }
-.header-actions {
-  display: flex;
-  align-items: center;
-  gap: 16px;
+.landing {
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: 24px 16px;
+  background:
+    radial-gradient(ellipse at top, #e3eadf, transparent 70%), #f6f4ee;
 }
-.poc-badge {
-  font-size: 11px;
-  letter-spacing: 0.07em;
-  border: 1px solid #d1d8cc;
-  border-radius: 30px;
-  padding: 5px 12px;
-  color: #67796b;
+.landing-card {
+  width: min(100%, 520px);
+  padding: clamp(22px, 6vw, 44px);
+  background: #fffdf8;
+  border: 1px solid #e1e3d8;
+  border-radius: 24px;
+  box-shadow: 0 16px 64px #30463e12;
 }
-.intro {
-  padding: 42px 0 28px;
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-end;
+.landing-card .brand {
+  margin-bottom: 30px;
+}
+.landing-card h1 span {
+  white-space: nowrap;
+}
+.landing-card .legal-links {
+  justify-content: center;
+  padding-bottom: 0;
+  font-size: 12px;
 }
 .eyebrow {
   font-size: 11px;
@@ -144,19 +151,6 @@ h1 {
   margin: 0 0 12px;
   line-height: 1.5;
 }
-.intro p:not(.eyebrow) {
-  font-size: 13px;
-  line-height: 1.9;
-  color: #748075;
-  margin: 0;
-}
-.time-control {
-  font-size: 11px;
-  color: #6b7d70;
-  display: grid;
-  gap: 6px;
-  min-width: 165px;
-}
 select {
   width: 100%;
   border: 1px solid #d8ded1;
@@ -165,92 +159,138 @@ select {
   background: #fffdf8;
   color: #30463e;
 }
-.notice {
-  padding: 12px 16px;
-  border-radius: 8px;
-  background: #eaf0e5;
-  color: #62795d;
-  font-size: 12px;
-  margin: 0 0 20px;
-}
-.town-entry {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px 12px;
-  margin-bottom: 12px;
-}
-.town-entry p {
-  margin: 0;
-  font-size: 12px;
-}
-.town-entry p a {
-  color: inherit;
-  font-weight: 600;
-}
-.entry-action {
-  border-radius: 8px;
-  padding: 9px 14px;
-  background: #456d5d;
-  color: #fff;
-  text-decoration: none;
-}
-.entry-action:hover {
-  background: #355646;
-}
-.welcome-guide:not([hidden]) {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 4px 12px;
-  margin-bottom: 12px;
-  padding: 10px 14px;
-  border: 1px solid #d8e0d2;
-  border-radius: 12px;
-  background: #eaf0e5;
-  font-size: 13px;
-}
-.welcome-guide h2 {
-  margin: 0;
-  font-size: 16px;
-}
-.welcome-guide p {
-  grid-column: 1 / -1;
-  margin: 0;
-}
-.welcome-guide dl {
-  grid-column: 1 / -1;
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  gap: 2px 10px;
-  margin: 0;
-}
-.welcome-guide dt {
-  font-weight: 600;
-}
-.welcome-guide dd {
-  margin: 0;
-}
-.welcome-guide button {
-  grid-column: 2;
-  grid-row: 1;
-  padding: 5px 9px;
-  font-size: 12px;
-}
-.layout {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 340px;
-  gap: 24px;
-  align-items: start;
-}
-.town {
-  height: 650px;
-  position: sticky;
-  top: 20px;
-  border-radius: 18px;
+.game {
+  --hud-top: max(12px, env(safe-area-inset-top));
+  --hud-right: max(12px, env(safe-area-inset-right));
+  --hud-bottom: max(12px, env(safe-area-inset-bottom));
+  --hud-left: max(12px, env(safe-area-inset-left));
+  position: relative;
+  isolation: isolate;
+  height: 100dvh;
   overflow: hidden;
   background: #e8eee5;
-  border: 1px solid #d8e0d2;
+}
+.game:focus-visible {
+  outline-offset: -3px;
+}
+.town {
+  position: relative;
+  height: 100%;
+  overflow: hidden;
+}
+.game-hud {
+  position: absolute;
+  z-index: 12;
+  inset: 0;
+  pointer-events: none;
+}
+.game-hud button,
+.game-hud select {
+  pointer-events: auto;
+}
+.game-task,
+.time-control,
+.help-button,
+.map-notice {
+  position: absolute;
+}
+.game-task {
+  top: var(--hud-top);
+  right: var(--hud-right);
+  display: grid;
+  text-align: left;
+  font-size: 13px;
+  font-weight: 600;
+  background: #fffdf5;
+  box-shadow: 0 4px 20px #30463e19;
+}
+.game-task span {
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  color: #527064;
+}
+.time-control {
+  top: calc(var(--hud-top) + 44px);
+  left: var(--hud-left);
+  width: auto;
+  min-height: 40px;
+  padding: 5px 8px;
+  font-size: 12px;
+}
+.help-button {
+  right: var(--hud-right);
+  bottom: var(--hud-bottom);
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border-radius: 50%;
+  background: #fffdf5;
+  box-shadow: 0 4px 20px #30463e19;
+  font-size: 20px;
+  font-weight: 600;
+}
+.map-notice:not(:empty) {
+  bottom: calc(var(--hud-bottom) + 78px);
+  left: 50%;
+  transform: translateX(-50%);
+  width: max-content;
+  max-width: calc(100% - 24px);
+  padding: 8px 12px;
+  border-radius: 8px;
+  text-align: center;
+  background: #fffdf5;
+  font-size: 12px;
+}
+.game-dialog {
+  width: min(640px, calc(100% - 24px));
+  max-height: calc(100dvh - 24px);
+  color: #30463e;
+  border: 1px solid #e1e3d8;
+  border-radius: 16px;
+  background: #fffdf8;
+  padding: clamp(16px, 4vw, 26px);
+  overscroll-behavior: contain;
+}
+.game-dialog::backdrop {
+  background: #18282180;
+}
+.controls-guide {
+  max-width: 460px;
+}
+.controls-guide dl {
+  margin: 16px 0 8px;
+}
+.controls-guide dt {
+  margin-top: 12px;
+  font-weight: 600;
+}
+.controls-guide dd {
+  margin: 2px 0 0;
+}
+.game-dialog .legal-links {
+  font-size: 12px;
+}
+.dialog-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+.dialog-heading h2 {
+  font-family: 'Yu Mincho', 'Hiragino Mincho ProN', serif;
+  font-weight: 500;
+  font-size: 21px;
+  margin: 0;
+}
+.dialog-heading button {
+  flex-shrink: 0;
+}
+.editor .dialog-heading {
+  position: sticky;
+  z-index: 1;
+  top: 0;
+  padding-bottom: 8px;
+  background: #fffdf8;
 }
 .town canvas {
   touch-action: none;
@@ -259,8 +299,8 @@ select {
   position: absolute;
   /* 3D内のラベルと吹き出し（drei Html の zIndexRange 上限10）より手前に置く */
   z-index: 11;
-  top: 18px;
-  left: 18px;
+  top: var(--hud-top);
+  left: var(--hud-left);
   background: #fffdf3e8;
   border: 1px solid #ffffffaa;
   border-radius: 30px;
@@ -286,7 +326,7 @@ select {
 .walk-controls {
   position: absolute;
   z-index: 11;
-  bottom: 18px;
+  bottom: var(--hud-bottom);
   left: 50%;
   transform: translateX(-50%);
   display: grid;
@@ -352,18 +392,6 @@ select {
   font-size: 12px;
   margin: 4px 0 0;
   line-height: 1.8;
-}
-.editor {
-  padding: 26px;
-  background: #fffdf8;
-  border: 1px solid #e1e3d8;
-  border-radius: 16px;
-}
-.editor h2 {
-  font-family: 'Yu Mincho', 'Hiragino Mincho ProN', serif;
-  font-weight: 500;
-  font-size: 21px;
-  margin: 0 0 12px;
 }
 .muted {
   font-size: 12px;
@@ -505,30 +533,13 @@ textarea {
   padding: 30px;
   color: #6b7d70;
 }
-footer {
-  display: flex;
-  justify-content: space-between;
-  padding: 32px 0;
+.legal-shell footer {
   color: #8c9688;
   font-size: 11px;
-  letter-spacing: 0.06em;
-}
-.mobile-break {
-  display: none;
 }
 @media (max-width: 1000px) {
   .app-shell {
     padding: 0 24px;
-  }
-  .layout {
-    grid-template-columns: minmax(0, 1fr) 310px;
-    gap: 16px;
-  }
-  .editor {
-    padding: 20px;
-  }
-  .town {
-    height: 610px;
   }
   .bubble {
     width: 154px;
@@ -549,42 +560,8 @@ footer {
     width: 38px;
     height: 38px;
   }
-  .poc-badge {
-    display: none;
-  }
-  .intro {
-    padding: 28px 0 20px;
-    display: block;
-  }
   h1 {
     font-size: 28px;
-  }
-  .mobile-break {
-    display: block;
-  }
-  .intro p:not(.eyebrow) {
-    font-size: 12px;
-  }
-  .time-control {
-    margin-top: 18px;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-  }
-  .time-control select {
-    width: auto;
-    font-size: 12px;
-  }
-  .layout {
-    grid-template-columns: 1fr;
-  }
-  .town {
-    position: relative;
-    top: 0;
-    height: 480px;
-  }
-  .editor {
-    padding: 24px;
   }
   .bubble {
     width: 135px;
@@ -592,13 +569,11 @@ footer {
   .bubble p {
     font-size: 11px;
   }
-  .notice {
-    font-size: 11px;
-  }
-  .header-actions {
-    gap: 8px;
-  }
-  footer {
-    font-size: 10px;
+}
+@media (max-width: 360px) {
+  .walk-controls {
+    grid-template-columns: repeat(4, 36px);
+    gap: 4px;
+    padding-inline: 8px;
   }
 }

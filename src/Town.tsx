@@ -24,6 +24,7 @@ import { apartment, plots, moveToward, type Home, type Position } from './world'
 
 type Props = {
   homes: Home[]
+  inputPaused: boolean
   hour: number
   selectedPlot: number
   onSelectPlot: (plot: number) => void
@@ -135,6 +136,7 @@ function Trees({ variant }: { variant: number }) {
 
 function Movement({
   homes,
+  inputPaused,
   target,
   position,
   diagnostics,
@@ -142,6 +144,7 @@ function Movement({
   target: RefObject<Position>
   position: RefObject<Position>
   diagnostics: RefObject<HTMLElement | null>
+  inputPaused: boolean
 }) {
   const avatar = useRef<Group>(null)
   const keys = useRef(new Set<string>())
@@ -151,10 +154,15 @@ function Movement({
   const occupied = useMemo(() => homes.map((home) => home.plot), [homes])
 
   useEffect(() => {
+    if (inputPaused) {
+      keys.current.clear()
+      target.current = { ...position.current }
+      return
+    }
     const down = (event: KeyboardEvent) => {
       if (
         (event.target as HTMLElement)?.closest(
-          'input,textarea,select,button,[contenteditable="true"]',
+          'input,textarea,select,[contenteditable="true"]',
         )
       )
         return
@@ -175,8 +183,8 @@ function Movement({
       }
     }
     const up = (event: KeyboardEvent) => {
-      keys.current.delete(event.key.toLowerCase())
-      if (!keys.current.size) target.current = { ...position.current }
+      if (keys.current.delete(event.key.toLowerCase()) && !keys.current.size)
+        target.current = { ...position.current }
     }
     const clear = () => {
       keys.current.clear()
@@ -190,7 +198,7 @@ function Movement({
       window.removeEventListener('keyup', up)
       window.removeEventListener('blur', clear)
     }
-  }, [position, target])
+  }, [inputPaused, position, target])
 
   useFrame(({ camera }, delta) => {
     const dx =
@@ -637,6 +645,7 @@ export default function Town(props: Props) {
           />
           <Movement
             homes={props.homes}
+            inputPaused={props.inputPaused}
             target={target}
             position={position}
             diagnostics={diagnostics}
